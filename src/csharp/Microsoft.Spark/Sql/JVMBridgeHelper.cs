@@ -40,6 +40,9 @@ namespace Microsoft.Spark.Sql
 
         private static int maxWaitTimeoutMS = 60000;
 
+        private readonly ILoggerService _logger =
+            LoggerServiceFactory.GetLogger(typeof(JVMBridgeHelper));        
+
         /// <summary>
         /// The running jvm bridge process , null means no such process
         /// </summary>
@@ -54,10 +57,10 @@ namespace Microsoft.Spark.Sql
             IPGlobalProperties customIPGlobalProperties = null)
         {
             var backendport = SparkEnvironment.ConfigurationService.GetBackendPortNumber();
-            var activeTcps =
+            var listeningEndpoints =
                 (customIPGlobalProperties ?? IPGlobalProperties.GetIPGlobalProperties())
-                .GetActiveTcpConnections();
-            return activeTcps.Any(tcp => tcp.LocalEndPoint.Port == backendport);
+                .GetActiveTcpListeners();
+            return listeningEndpoints.Any(p => p.Port == backendport);
         }
 
         public JVMBridgeHelper()
@@ -82,6 +85,7 @@ namespace Microsoft.Spark.Sql
             };
 
             jvmBridge = new Process() { StartInfo = startupinfo };
+            _logger.LogInfo($"Launch JVM Bridge : {sparksubmit} {arguments}");
             jvmBridge.Start();
 
             // wait until we see .net backend started
@@ -97,11 +101,14 @@ namespace Microsoft.Spark.Sql
                 if (message.Result.Contains(RunnerReadyMsg))
                 {
                     // launched successfully!
+                    jvmBridge.StandardOutput.ReadToEndAsync();
+                    _logger.LogInfo($"Launch JVM Bridge ready");
                     return;
                 }
                 if (message.Result.Contains(RunnerAddressInUseMsg))
                 {
                     // failed to start for port is using, give up.
+                    jvmBridge.StandardOutput.ReadToEndAsync();
                     break;
                 }
             }
@@ -114,17 +121,19 @@ namespace Microsoft.Spark.Sql
         private string locateSparkSubmit()
         {
             var sparkHome = Environment.GetEnvironmentVariable("SPARK_HOME");
+            if (string.IsNullOrWhiteSpace(sparkHome))
+            {
+                return string.Empty;
+            }
             var filename = Path.Combine(sparkHome, "bin", "spark-submit");
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 filename += ".cmd";
             }
-
             if (!File.Exists(filename))
             {
                 return string.Empty;
             }
-
             return filename;
         }
 
@@ -158,9 +167,8 @@ namespace Microsoft.Spark.Sql
             if (jvmBridge != null)
             {
                 jvmBridge.StandardInput.WriteLine("\n");
-                // to avoid deadlock, read all output then wait for exit.
-                jvmBridge.StandardOutput.ReadToEndAsync();
                 jvmBridge.WaitForExit(maxWaitTimeoutMS);
+                _logger.LogInfo($"JVM Bridge disposed.");
             }
         }
     }
