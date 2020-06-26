@@ -308,16 +308,6 @@ namespace Microsoft.Spark.Interop.Ipc
                         return s_byteArrayTypeId;
                     }
 
-                    if (type == typeof(int[]) ||
-                        type == typeof(long[]) ||
-                        type == typeof(double[]) ||
-                        type == typeof(double[][]) ||
-                        typeof(IEnumerable<byte[]>).IsAssignableFrom(type) ||
-                        typeof(IEnumerable<string>).IsAssignableFrom(type))
-                    {
-                        return s_arrayTypeId;
-                    }
-
                     if (IsDictionary(type))
                     {
                         return s_dictionaryTypeId;
@@ -341,6 +331,13 @@ namespace Microsoft.Spark.Interop.Ipc
                     if (typeof(Timestamp).IsAssignableFrom(type))
                     {
                         return s_timestampTypeId;
+                    }
+                    
+                    // typeof(int[]), typeof(long[]), ArrayList ... 
+                    // They support IEnumerable
+                    if (typeof(IEnumerable).IsAssignableFrom(type))
+                    {
+                        return s_arrayTypeId;
                     }
                     break;
             }
