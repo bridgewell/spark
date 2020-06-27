@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -12,6 +13,7 @@ using Microsoft.Spark.Sql;
 using Microsoft.Spark.Sql.Types;
 using Microsoft.Spark.UnitTest.TestUtils;
 using Microsoft.Spark.Utils;
+using Newtonsoft.Json;
 using Moq;
 using Razorvine.Pickle;
 using Xunit;
@@ -93,6 +95,53 @@ namespace Microsoft.Spark.UnitTest
             Assert.Equal(2, unpickledData.Length);
             Assert.Equal(row1, (unpickledData[0] as RowConstructor).GetRow());
             Assert.Equal(row2, (unpickledData[1] as RowConstructor).GetRow());
+        }
+
+
+        [Fact]
+        public void DeepRowConstructorTest()
+        {
+            Pickler pickler = CreatePickler();
+            var rowschema = new StructType(
+                            new StructField[] {
+                                new StructField("id", new StringType()),
+                            });
+            var schema = new StructType(new StructField[] {
+                new StructField("age", new IntegerType()),
+                new StructField("name", new StringType()),
+                new StructField("dataarray", new ArrayType(rowschema)),
+            });
+
+            var row1 = new Row(new object[] { 10, "name1", new ArrayList(new Row[] {
+                    new Row(new object[] {"id1"}, rowschema),
+                    new Row(new object[] {"id2"}, rowschema),
+                    }) }, schema);
+            var row2 = new Row(new object[] { 15, "name2", new ArrayList(new Row[] { 
+                    new Row(new object[] {"id1"}, rowschema),
+                    new Row(new object[] {"id2"}, rowschema),
+                    new Row(new object[] {"id3"}, rowschema),
+                    }) }, schema);
+            byte[] pickledBytes = pickler.dumps(new[] { row1, row2 });
+
+            // Set up the mock to return memory stream to which pickled data is written.
+            var stream = new MemoryStream();            
+            SerDe.Write(stream, pickledBytes.Length);
+            SerDe.Write(stream, pickledBytes);
+            stream.Position = 0;
+            var socket = new Mock<ISocketWrapper>();
+            socket.Setup(m => m.InputStream).Returns(stream);
+            socket.Setup(m => m.OutputStream).Returns(stream);            
+
+            var rowCollector = new RowCollector();
+            Row[] rows = rowCollector.Collect(socket.Object, true).ToArray();
+
+            Assert.Equal(2, rows.Length);
+            Assert.Equal(
+                JsonConvert.SerializeObject(row1),
+                JsonConvert.SerializeObject(rows[0]));
+            Assert.Equal(
+                JsonConvert.SerializeObject(row2),
+                JsonConvert.SerializeObject(rows[1]));
         }
 
         [Fact]
