@@ -42,6 +42,7 @@ object SerDe {
       case 't' => readTime(dis)
       case 'j' => JVMObjectTracker.getObject(readString(dis))
       case 'R' => readRowArr(dis)
+      case 's' => readRow(dis)
       case _ => throw new IllegalArgumentException(s"Invalid type $dataType")
     }
   }
@@ -138,6 +139,11 @@ object SerDe {
     (0 until len).map(_ => readRow(in)).toList.asJava
   }
 
+  def readObjArr(in: DataInputStream): Array[Object] = {
+    val len = readInt(in)
+    (0 until len).map(_ => readObject(in)).toArray
+  }
+
   def readList(dis: DataInputStream): Array[_] = {
     val arrType = readObjectType(dis)
     arrType match {
@@ -149,6 +155,7 @@ object SerDe {
       case 'b' => readBooleanArr(dis)
       case 'j' => readStringArr(dis).map(x => JVMObjectTracker.getObject(x))
       case 'r' => readBytesArr(dis)
+      case 'o' => readObjArr(dis)
       case _ => throw new IllegalArgumentException(s"Invalid array type $arrType")
     }
   }

@@ -32,6 +32,10 @@ namespace Microsoft.Spark.Interop.Ipc
         private static readonly byte[] s_dictionaryTypeId = new[] { (byte)'e' };
         private static readonly byte[] s_rowArrTypeId = new[] { (byte)'R' };
 
+        private static readonly byte[] s_ArrayListObjectTypeId = new[] { (byte)'o' };
+
+        private static readonly byte[] s_SingleGenericRowTypeId = new[] { (byte)'s' };
+
         private static readonly ConcurrentDictionary<Type, bool> s_isDictionaryTable =
             new ConcurrentDictionary<Type, bool>();
 
@@ -64,8 +68,6 @@ namespace Microsoft.Spark.Interop.Ipc
             object[] args,
             bool addTypeIdPrefix = true)
         {
-            long posBeforeEnumerable, posAfterEnumerable;
-            int itemCount;
             object[] convertArgs = null;
 
             foreach (object arg in args)
@@ -155,67 +157,50 @@ namespace Microsoft.Spark.Interop.Ipc
 
                             case IEnumerable<byte[]> argByteArrayEnumerable:
                                 SerDe.Write(destination, s_byteArrayTypeId);
-                                posBeforeEnumerable = destination.Position;
-                                destination.Position += sizeof(int);
-                                itemCount = 0;
-                                foreach (byte[] b in argByteArrayEnumerable)
-                                {
-                                    ++itemCount;
-                                    SerDe.Write(destination, b.Length);
-                                    destination.Write(b, 0, b.Length);
-                                }
-                                posAfterEnumerable = destination.Position;
-                                destination.Position = posBeforeEnumerable;
-                                SerDe.Write(destination, itemCount);
-                                destination.Position = posAfterEnumerable;
+                                WriteIEnumerableObjects(
+                                    destination,
+                                    argByteArrayEnumerable,
+                                    (dest, b) =>
+                                    {
+                                        SerDe.Write(dest, b.Length);
+                                        dest.Write(b, 0, b.Length);
+                                    }
+                                );                            
                                 break;
 
                             case IEnumerable<string> argStringEnumerable:
                                 SerDe.Write(destination, s_stringTypeId);
-                                posBeforeEnumerable = destination.Position;
-                                destination.Position += sizeof(int);
-                                itemCount = 0;
-                                foreach (string s in argStringEnumerable)
-                                {
-                                    ++itemCount;
-                                    SerDe.Write(destination, s);
-                                }
-                                posAfterEnumerable = destination.Position;
-                                destination.Position = posBeforeEnumerable;
-                                SerDe.Write(destination, itemCount);
-                                destination.Position = posAfterEnumerable;
+                                WriteIEnumerableObjects(
+                                    destination,
+                                    argStringEnumerable,
+                                    (dest, s) => SerDe.Write(dest, s)
+                                );
                                 break;
 
                             case IEnumerable<IJvmObjectReferenceProvider> argJvmEnumerable:
                                 SerDe.Write(destination, s_jvmObjectTypeId);
-                                posBeforeEnumerable = destination.Position;
-                                destination.Position += sizeof(int);
-                                itemCount = 0;
-                                foreach (IJvmObjectReferenceProvider jvmObject in argJvmEnumerable)
-                                {
-                                    ++itemCount;
-                                    SerDe.Write(destination, jvmObject.Reference.Id);
-                                }
-                                posAfterEnumerable = destination.Position;
-                                destination.Position = posBeforeEnumerable;
-                                SerDe.Write(destination, itemCount);
-                                destination.Position = posAfterEnumerable;
+                                WriteIEnumerableObjects(
+                                    destination,
+                                    argJvmEnumerable,
+                                    (dest, jvmObject) => SerDe.Write(dest, jvmObject.Reference.Id)
+                                );
+                                break;
+
+                            case GenericRow singleRow:
+                                SerDe.Write(destination, (int)singleRow.Values.Length);
+                                ConvertArgsToBytes(destination, singleRow.Values, true);
                                 break;
 
                             case IEnumerable<GenericRow> argRowEnumerable:
-                                posBeforeEnumerable = destination.Position;
-                                destination.Position += sizeof(int);
-                                itemCount = 0;
-                                foreach (GenericRow r in argRowEnumerable)
-                                {
-                                    ++itemCount;
-                                    SerDe.Write(destination, (int)r.Values.Length);
-                                    ConvertArgsToBytes(destination, r.Values, true);
-                                }
-                                posAfterEnumerable = destination.Position;
-                                destination.Position = posBeforeEnumerable;
-                                SerDe.Write(destination, itemCount);
-                                destination.Position = posAfterEnumerable;
+                                WriteIEnumerableObjects(
+                                    destination,
+                                    argRowEnumerable,
+                                    (dest, r) =>
+                                    {
+                                        SerDe.Write(dest, (int)r.Values.Length);
+                                        ConvertArgsToBytes(dest, r.Values, true);
+                                    }
+                                );
                                 break;
 
                             case var _ when IsDictionary(arg.GetType()):
@@ -274,6 +259,15 @@ namespace Microsoft.Spark.Interop.Ipc
                                 SerDe.Write(destination, argTimestamp.GetIntervalInSeconds());
                                 break;
 
+                            case IEnumerable enumlist:
+                                SerDe.Write(destination, s_ArrayListObjectTypeId);
+                                WriteIEnumerableObjects(
+                                    destination,
+                                    enumlist,
+                                    (dest , obj) => ConvertArgsToBytes(dest, new object[] { obj })
+                                );
+                                break;
+
                             default:
                                 throw new NotSupportedException(
                                     string.Format($"Type {arg.GetType()} is not supported"));
@@ -281,6 +275,46 @@ namespace Microsoft.Spark.Interop.Ipc
                         break;
                 }
             }
+        }
+
+
+        /// <summary>
+        /// To write unknown count objects,
+        /// We can reserved the counts data position at beginning,
+        /// then write objects until we know the counts.
+        /// Finally, write the count info back at the beginning posisiton.
+        /// </summary>
+        /// <param name="stream">The destination stream.</param>
+        /// <param name="enumlist">enum list.</param>
+        /// <param name="writefunc">iterate writefuncs</param>
+        internal static void WriteIEnumerableObjects(MemoryStream stream, IEnumerable enumlist, Action<MemoryStream, object> writefunc)
+        {
+            var posBeforeEnumerable = stream.Position;
+            stream.Position += sizeof(int);
+            var itemCount = 0;
+            foreach (var obj in enumlist) {
+                itemCount++;
+                writefunc(stream, obj);
+            }
+            var posAfterEnumerable = stream.Position;
+            stream.Position = posBeforeEnumerable;
+            SerDe.Write(stream, itemCount);
+            stream.Position = posAfterEnumerable;
+        }
+
+        internal static void WriteIEnumerableObjects<T>(MemoryStream stream, IEnumerable<T> enumlist, Action<MemoryStream, T> writefunc)
+        {
+            var posBeforeEnumerable = stream.Position;
+            stream.Position += sizeof(int);
+            var itemCount = 0;
+            foreach (var obj in enumlist) {
+                itemCount++;
+                writefunc(stream, obj);
+            }
+            var posAfterEnumerable = stream.Position;
+            stream.Position = posBeforeEnumerable;
+            SerDe.Write(stream, itemCount);
+            stream.Position = posAfterEnumerable;
         }
 
         internal static byte[] GetTypeId(Type type)
@@ -308,16 +342,6 @@ namespace Microsoft.Spark.Interop.Ipc
                         return s_byteArrayTypeId;
                     }
 
-                    if (type == typeof(int[]) ||
-                        type == typeof(long[]) ||
-                        type == typeof(double[]) ||
-                        type == typeof(double[][]) ||
-                        typeof(IEnumerable<byte[]>).IsAssignableFrom(type) ||
-                        typeof(IEnumerable<string>).IsAssignableFrom(type))
-                    {
-                        return s_arrayTypeId;
-                    }
-
                     if (IsDictionary(type))
                     {
                         return s_dictionaryTypeId;
@@ -326,6 +350,11 @@ namespace Microsoft.Spark.Interop.Ipc
                     if (typeof(IEnumerable<IJvmObjectReferenceProvider>).IsAssignableFrom(type))
                     {
                         return s_arrayTypeId;
+                    }
+
+                    if (type == typeof(GenericRow))
+                    {
+                        return s_SingleGenericRowTypeId;
                     }
 
                     if (typeof(IEnumerable<GenericRow>).IsAssignableFrom(type))
@@ -341,6 +370,11 @@ namespace Microsoft.Spark.Interop.Ipc
                     if (typeof(Timestamp).IsAssignableFrom(type))
                     {
                         return s_timestampTypeId;
+                    }
+
+                    if (typeof(IEnumerable).IsAssignableFrom(type))
+                    {
+                        return s_arrayTypeId;
                     }
                     break;
             }
