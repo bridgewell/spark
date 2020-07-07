@@ -87,10 +87,18 @@ namespace Microsoft.Spark.Interop.Ipc
 
                 switch (Type.GetTypeCode(argType))
                 {
+                    case TypeCode.UInt32:
+                        SerDe.Write(destination, Convert.ToInt32(arg));
+                        break;
+
                     case TypeCode.Int32:
                         SerDe.Write(destination, (int)arg);
                         break;
 
+                    case TypeCode.UInt64:
+                        SerDe.Write(destination, Convert.ToInt64(arg));
+                        break;
+                        
                     case TypeCode.Int64:
                         SerDe.Write(destination, (long)arg);
                         break;
@@ -322,8 +330,10 @@ namespace Microsoft.Spark.Interop.Ipc
             switch (Type.GetTypeCode(type))
             {
                 case TypeCode.Int32:
+                case TypeCode.UInt32:
                     return s_int32TypeId;
                 case TypeCode.Int64:
+                case TypeCode.UInt64:
                     return s_int64TypeId;
                 case TypeCode.String:
                     return s_stringTypeId;
