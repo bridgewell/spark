@@ -102,6 +102,19 @@ namespace Microsoft.Spark.Interop.Ipc
         }
 
         /// <summary>
+        /// Reads a float from a stream.
+        /// </summary>
+        /// <param name="s">The stream to be read</param>
+        /// <returns>The double read from stream</returns>
+        public static float ReadFloat(Stream s)
+        {
+            byte[] buffer = GetThreadLocalBuffer(sizeof(float));
+            TryReadBytes(s, buffer, sizeof(float));
+            Array.Reverse(buffer);
+            return BitConverter.ToSingle(buffer, 0);
+        }
+
+        /// <summary>
         /// Reads a string from a stream
         /// </summary>
         /// <param name="s">The stream to be read</param>
@@ -321,6 +334,13 @@ namespace Microsoft.Spark.Interop.Ipc
         /// <param name="value">The double to write</param>
         public static void Write(Stream s, double value) =>
             Write(s, BitConverter.DoubleToInt64Bits(value));
+
+        public static void Write(Stream s, float value)
+        {
+            var bytes = BitConverter.GetBytes(value);
+            Array.Reverse(bytes);
+            Write(s, bytes);
+        }
 
         /// <summary>
         /// Writes a string to a stream.

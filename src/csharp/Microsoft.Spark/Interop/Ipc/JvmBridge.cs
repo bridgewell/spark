@@ -184,7 +184,7 @@ namespace Microsoft.Spark.Interop.Ipc
             ISocketWrapper socket = null;
 
             try
-            {                
+            {
                 // Limit the number of connections to the JVM backend. Netty is configured
                 // to use a set number of threads to process incoming connections. Each
                 // new connection is delegated to these threads in a round robin fashion.
@@ -268,6 +268,9 @@ namespace Microsoft.Spark.Interop.Ipc
                         break;
                     case 'd':
                         returnValue = SerDe.ReadDouble(inputStream);
+                        break;
+                    case 'f':
+                        returnValue = SerDe.ReadFloat(inputStream);
                         break;
                     case 'b':
                         returnValue = Convert.ToBoolean(inputStream.ReadByte());
@@ -446,6 +449,14 @@ namespace Microsoft.Spark.Interop.Ipc
                         doubleArray[itemIndex] = SerDe.ReadDouble(s);
                     }
                     returnValue = doubleArray;
+                    break;
+                case 'f':
+                    var floatArray = new float[numOfItemsInList];
+                    for (int itemIndex = 0; itemIndex < numOfItemsInList; ++itemIndex)
+                    {
+                        floatArray[itemIndex] = SerDe.ReadFloat(s);
+                    }
+                    returnValue = floatArray;
                     break;
                 case 'A':
                     var doubleArrayArray = new double[numOfItemsInList][];

@@ -188,7 +188,11 @@ class DotnetBackendHandler(server: DotnetBackend, objectsTracker: JVMObjectTrack
           case Some(jObj) => jObj.getClass.getName
           case None => "NullObject"
         }
-        val argsStr = args
+
+        var argsStr = "Args: NULL"
+
+        if (args != null) {
+          argsStr = args
           .map(arg => {
             if (arg != null) {
               s"[Type=${arg.getClass.getCanonicalName}, Value: $arg]"
@@ -197,6 +201,7 @@ class DotnetBackendHandler(server: DotnetBackend, objectsTracker: JVMObjectTrack
             }
           })
           .mkString(", ")
+        }
 
         logError(s"Failed to execute '$methodName' on '$jvmObjName' with args=($argsStr)")
 

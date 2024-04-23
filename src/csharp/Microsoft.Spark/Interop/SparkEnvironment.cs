@@ -59,6 +59,7 @@ namespace Microsoft.Spark.Interop
         }
 
         private static IJvmBridge s_jvmBridge;
+        
         /// <summary>
         /// The bridge between the JVM and the CLR.
         /// </summary>

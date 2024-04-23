@@ -12,7 +12,7 @@ using System.Runtime.InteropServices;
 using Microsoft.Spark.Services;
 using Microsoft.Spark.Interop;
 
-namespace Microsoft.Spark.Sql
+namespace Microsoft.Spark.Utils
 {
     /// <summary>
     /// An helper to launch dotnet jvm if needed
@@ -138,6 +138,11 @@ namespace Microsoft.Spark.Sql
 
             var workdir = Environment.GetEnvironmentVariable(
                     ConfigurationService.DefaultWorkerDirEnvVarName);
+            if (workdir == null)
+            {
+                workdir = "/usr/local/dotnet_worker";
+            }
+
             if ((workdir != null) && Directory.Exists(workdir))
             {
                 // let's find the approicate jar in the work dirctory.
