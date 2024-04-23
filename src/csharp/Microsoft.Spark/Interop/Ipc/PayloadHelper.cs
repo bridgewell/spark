@@ -388,6 +388,7 @@ namespace Microsoft.Spark.Interop.Ipc
                     if (type == typeof(int[]) ||
                         type == typeof(long[]) ||
                         type == typeof(double[]) ||
+                        type == typeof(float[]) ||
                         type == typeof(double[][]) ||
                         typeof(IEnumerable<byte[]>).IsAssignableFrom(type) ||
                         typeof(IEnumerable<string>).IsAssignableFrom(type))
