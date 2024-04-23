@@ -19,6 +19,7 @@ namespace Microsoft.Spark.Worker.UnitTest
                 new object[] { Versions.V2_4_0 },
                 new object[] { Versions.V3_0_0 },
                 new object[] { Versions.V3_2_0 },
+                new object[] { Versions.V3_3_2 },
             };
 
         internal static Payload GetDefaultPayload()
@@ -71,7 +72,7 @@ namespace Microsoft.Spark.Worker.UnitTest
 
             var command2 = new Command()
             {
-                ChainedUdfs = new PicklingWorkerFunction.ExecuteDelegate[] {udfWrapper3.Execute },
+                ChainedUdfs = new PicklingWorkerFunction.ExecuteDelegate[] { udfWrapper3.Execute },
                 ArgOffsets = new[] { 1, 2 },
                 SerializerMode = CommandSerDe.SerializedMode.Row,
                 DeserializerMode = CommandSerDe.SerializedMode.Row

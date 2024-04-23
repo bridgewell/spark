@@ -23,6 +23,7 @@ namespace Microsoft.Spark.Interop.Ipc
         private static readonly byte[] s_stringTypeId = new[] { (byte)'c' };
         private static readonly byte[] s_boolTypeId = new[] { (byte)'b' };
         private static readonly byte[] s_doubleTypeId = new[] { (byte)'d' };
+        private static readonly byte[] s_floatTypeId = new[] { (byte)'f' };
         private static readonly byte[] s_dateTypeId = new[] { (byte)'D' };
         private static readonly byte[] s_timestampTypeId = new[] { (byte)'t' };
         private static readonly byte[] s_jvmObjectTypeId = new[] { (byte)'j' };
@@ -32,6 +33,7 @@ namespace Microsoft.Spark.Interop.Ipc
         private static readonly byte[] s_dictionaryTypeId = new[] { (byte)'e' };
         private static readonly byte[] s_rowArrTypeId = new[] { (byte)'R' };
         private static readonly byte[] s_objectArrTypeId = new[] { (byte)'O' };
+        private static readonly byte[] s_SingleGenericRowTypeId = new[] { (byte)'s' };
 
         private static readonly ConcurrentDictionary<Type, bool> s_isDictionaryTable =
             new ConcurrentDictionary<Type, bool>();
@@ -90,8 +92,16 @@ namespace Microsoft.Spark.Interop.Ipc
 
                 switch (Type.GetTypeCode(argType))
                 {
+                    case TypeCode.UInt32:
+                        SerDe.Write(destination, Convert.ToInt32(arg));
+                        break;
+
                     case TypeCode.Int32:
                         SerDe.Write(destination, (int)arg);
+                        break;
+
+                    case TypeCode.UInt64:
+                        SerDe.Write(destination, Convert.ToInt64(arg));
                         break;
 
                     case TypeCode.Int64:
@@ -104,6 +114,10 @@ namespace Microsoft.Spark.Interop.Ipc
 
                     case TypeCode.Boolean:
                         SerDe.Write(destination, (bool)arg);
+                        break;
+
+                    case TypeCode.Single:
+                        SerDe.Write(destination, (float)arg);
                         break;
 
                     case TypeCode.Double:
@@ -140,6 +154,15 @@ namespace Microsoft.Spark.Interop.Ipc
                                 SerDe.Write(destination, s_doubleTypeId);
                                 SerDe.Write(destination, argDoubleArray.Length);
                                 foreach (double d in argDoubleArray)
+                                {
+                                    SerDe.Write(destination, d);
+                                }
+                                break;
+
+                            case float[] argFloatArray:
+                                SerDe.Write(destination, s_floatTypeId);
+                                SerDe.Write(destination, argFloatArray.Length);
+                                foreach (double d in argFloatArray)
                                 {
                                     SerDe.Write(destination, d);
                                 }
@@ -243,6 +266,31 @@ namespace Microsoft.Spark.Interop.Ipc
                                 destination.Position = posAfterEnumerable;
                                 break;
 
+                            case GenericRow singleRow:
+                                SerDe.Write(destination, (int)singleRow.Values.Length);
+                                ConvertArgsToBytes(destination, singleRow.Values, true);
+                                break;
+
+                            case ArrayList argArrayList:
+                                posBeforeEnumerable = destination.Position;
+                                destination.Position += sizeof(int);
+                                itemCount = 0;
+                                if (convertArgs == null)
+                                {
+                                    convertArgs = new object[1];
+                                }
+                                foreach (object o in argArrayList)
+                                {
+                                    ++itemCount;
+                                    convertArgs[0] = o;
+                                    ConvertArgsToBytes(destination, convertArgs, true);
+                                }
+                                posAfterEnumerable = destination.Position;
+                                destination.Position = posBeforeEnumerable;
+                                SerDe.Write(destination, itemCount);
+                                destination.Position = posAfterEnumerable;
+                                break;
+
                             case var _ when IsDictionary(arg.GetType()):
                                 // Generic dictionary, but we don't have it strongly typed as
                                 // Dictionary<T,U>
@@ -313,8 +361,10 @@ namespace Microsoft.Spark.Interop.Ipc
             switch (Type.GetTypeCode(type))
             {
                 case TypeCode.Int32:
+                case TypeCode.UInt32:
                     return s_int32TypeId;
                 case TypeCode.Int64:
+                case TypeCode.UInt64:
                     return s_int64TypeId;
                 case TypeCode.String:
                     return s_stringTypeId;
@@ -322,6 +372,8 @@ namespace Microsoft.Spark.Interop.Ipc
                     return s_boolTypeId;
                 case TypeCode.Double:
                     return s_doubleTypeId;
+                case TypeCode.Single:
+                    return s_floatTypeId;
                 case TypeCode.Object:
                     if (typeof(IJvmObjectReferenceProvider).IsAssignableFrom(type))
                     {
@@ -361,6 +413,16 @@ namespace Microsoft.Spark.Interop.Ipc
                     if (typeof(IEnumerable<object>).IsAssignableFrom(type))
                     {
                         return s_objectArrTypeId;
+                    }
+
+                    if (typeof(ArrayList).IsAssignableFrom(type))
+                    {
+                        return s_objectArrTypeId;
+                    }
+
+                    if (type == typeof(GenericRow))
+                    {
+                        return s_SingleGenericRowTypeId;
                     }
 
                     if (typeof(Date).IsAssignableFrom(type))

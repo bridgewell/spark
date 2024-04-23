@@ -26,6 +26,12 @@ namespace Microsoft.Spark.Sql
             "org.apache.spark.sql.SparkSession";
 
         /// <summary>
+        /// The created jvm process
+        /// </summary>
+        /// <returns>The created jvm bridge process helper.</returns>
+        private static JVMBridgeHelper s_jvmbridge = null;
+
+        /// <summary>
         /// Constructor for SparkSession.
         /// </summary>
         /// <param name="jvmObject">Reference to the JVM SparkSession object</param>
@@ -57,7 +63,17 @@ namespace Microsoft.Spark.Sql
         /// Creates a Builder object for SparkSession.
         /// </summary>
         /// <returns>Builder object</returns>
-        public static Builder Builder() => new Builder();
+        public static Builder Builder()
+        {
+            // We could try to detect if we don't have jvm bridge,
+            // call the helper to launch jvm bridge process.
+            if ((s_jvmbridge == null) &&
+                (JVMBridgeHelper.IsDotnetBackendPortUsing() == false))
+            {
+                s_jvmbridge = new JVMBridgeHelper();
+            }
+            return new Builder();
+        }
 
         /// <summary>
         /// Changes the SparkSession that will be returned in this thread when 
@@ -185,7 +201,7 @@ namespace Microsoft.Spark.Sql
         /// A string that represents the version of Spark on which this application is running.
         /// </returns>
         public string Version() => (string)Reference.Invoke("version");
-        
+
         /// <summary>
         /// Returns the specified table/view as a DataFrame.
         /// </summary>
@@ -393,8 +409,17 @@ namespace Microsoft.Spark.Sql
         /// <summary>
         /// Stops the underlying SparkContext.
         /// </summary>
-        public void Stop() => Reference.Invoke("stop");
+        public void Stop()
+        {
+            Reference.Invoke("stop");
 
+            // if we have created the jvm bridge process, dispose it now.
+            if (s_jvmbridge != null)
+            {
+                s_jvmbridge.Dispose();
+                s_jvmbridge = null;
+            }
+        }
         /// <summary>
         /// Returns a single column schema of the given datatype.
         /// </summary>
