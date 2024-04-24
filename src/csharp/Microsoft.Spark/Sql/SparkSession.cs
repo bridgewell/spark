@@ -160,6 +160,7 @@ namespace Microsoft.Spark.Sql
         {
             Stop();
             GC.SuppressFinalize(this);
+            SparkEnvironment.JvmBridge = null;
         }
 
         /// <summary>

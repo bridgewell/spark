@@ -70,7 +70,7 @@ namespace Microsoft.Spark.Utils
                 // Cannot find correct launch informations, give up.
                 return;
             }
-            var arguments = $"--class {RunnerClassname} {jarpath} debug";
+            var arguments = $"--class {RunnerClassname} {jarpath} debug {SparkEnvironment.ConfigurationService.GetBackendPortNumber()}";
             var startupinfo = new ProcessStartInfo
             {
                 FileName = sparksubmit,

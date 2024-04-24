@@ -23,7 +23,7 @@ namespace Microsoft.Spark.Services
         internal const string DefaultWorkerDirEnvVarName = "DOTNET_WORKER_DIR";
         internal const string WorkerVerDirEnvVarNameFormat = "DOTNET_WORKER_{0}_DIR";
 
-        private const string DotnetBackendPortEnvVarName = "DOTNETBACKEND_PORT";
+        public const string DotnetBackendPortEnvVarName = "DOTNETBACKEND_PORT";
         private const int DotnetBackendDebugPort = 5567;
 
         private const string DotnetNumBackendThreadsEnvVarName = "DOTNET_SPARK_NUM_BACKEND_THREADS";
