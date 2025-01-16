@@ -1,10 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
-    <IsPackable>false</IsPackable>
+    <TargetFramework>net8.0</TargetFramework>
   </PropertyGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\..\Microsoft.Spark.E2ETest\Microsoft.Spark.E2ETest.csproj" />
     <ProjectReference Include="..\..\Microsoft.Spark\Microsoft.Spark.csproj" />

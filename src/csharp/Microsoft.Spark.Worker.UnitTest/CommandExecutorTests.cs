@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -25,9 +26,13 @@ namespace Microsoft.Spark.Worker.UnitTest
 {
     public class CommandExecutorTests
     {
-        [Fact]
-        public void TestPicklingSqlCommandExecutorWithSingleCommand()
+        [Theory]
+        [MemberData(nameof(CommandExecutorData.Data), MemberType = typeof(CommandExecutorData))]
+        public void TestPicklingSqlCommandExecutorWithSingleCommand(
+            Version sparkVersion,
+            IpcOptions ipcOptions)
         {
+            _ = ipcOptions;
             var udfWrapper = new Sql.PicklingUdfWrapper<string, string>(
                 (str) => "udf: " + ((str is null) ? "NULL" : str));
             var command = new SqlCommand()
@@ -61,7 +66,7 @@ namespace Microsoft.Spark.Worker.UnitTest
             SerDe.Write(inputStream, (int)SpecialLengths.END_OF_DATA_SECTION);
             inputStream.Seek(0, SeekOrigin.Begin);
 
-            CommandExecutorStat stat = new CommandExecutor().Execute(
+            CommandExecutorStat stat = new CommandExecutor(sparkVersion).Execute(
                 inputStream,
                 outputStream,
                 0,
@@ -98,9 +103,13 @@ namespace Microsoft.Spark.Worker.UnitTest
             Assert.Equal(outputStream.Length, outputStream.Position);
         }
 
-        [Fact]
-        public void TestPicklingSqlCommandExecutorWithMultiCommands()
+        [Theory]
+        [MemberData(nameof(CommandExecutorData.Data), MemberType = typeof(CommandExecutorData))]
+        public void TestPicklingSqlCommandExecutorWithMultiCommands(
+            Version sparkVersion,
+            IpcOptions ipcOptions)
         {
+            _ = ipcOptions;
             var udfWrapper1 = new Sql.PicklingUdfWrapper<string, string>((str) => $"udf: {str}");
             var udfWrapper2 = new Sql.PicklingUdfWrapper<int, int, int>(
                 (arg1, arg2) => arg1 * arg2);
@@ -145,7 +154,7 @@ namespace Microsoft.Spark.Worker.UnitTest
             SerDe.Write(inputStream, (int)SpecialLengths.END_OF_DATA_SECTION);
             inputStream.Seek(0, SeekOrigin.Begin);
 
-            CommandExecutorStat stat = new CommandExecutor().Execute(
+            CommandExecutorStat stat = new CommandExecutor(sparkVersion).Execute(
                 inputStream,
                 outputStream,
                 0,
@@ -182,9 +191,13 @@ namespace Microsoft.Spark.Worker.UnitTest
             Assert.Equal(outputStream.Length, outputStream.Position);
         }
 
-        [Fact]
-        public void TestPicklingSqlCommandExecutorWithEmptyInput()
+        [Theory]
+        [MemberData(nameof(CommandExecutorData.Data), MemberType = typeof(CommandExecutorData))]
+        public void TestPicklingSqlCommandExecutorWithEmptyInput(
+            Version sparkVersion,
+            IpcOptions ipcOptions)
         {
+            _ = ipcOptions;
             var udfWrapper = new Sql.PicklingUdfWrapper<string, string>((str) => $"udf: {str}");
             var command = new SqlCommand()
             {
@@ -208,7 +221,7 @@ namespace Microsoft.Spark.Worker.UnitTest
             SerDe.Write(inputStream, (int)SpecialLengths.END_OF_DATA_SECTION);
             inputStream.Seek(0, SeekOrigin.Begin);
 
-            CommandExecutorStat stat = new CommandExecutor().Execute(
+            CommandExecutorStat stat = new CommandExecutor(sparkVersion).Execute(
                 inputStream,
                 outputStream,
                 0,
@@ -222,8 +235,11 @@ namespace Microsoft.Spark.Worker.UnitTest
             Assert.Equal(0, outputStream.Length);
         }
 
-        [Fact]
-        public async Task TestArrowSqlCommandExecutorWithSingleCommand()
+        [Theory]
+        [MemberData(nameof(CommandExecutorData.Data), MemberType = typeof(CommandExecutorData))]
+        public async Task TestArrowSqlCommandExecutorWithSingleCommand(
+            Version sparkVersion,
+            IpcOptions ipcOptions)
         {
             var udfWrapper = new Sql.ArrowUdfWrapper<StringArray, StringArray>(
                 (strings) => (StringArray)ToArrowArray(
@@ -254,7 +270,8 @@ namespace Microsoft.Spark.Worker.UnitTest
             Schema schema = new Schema.Builder()
                 .Field(b => b.Name("arg1").DataType(StringType.Default))
                 .Build();
-            var arrowWriter = new ArrowStreamWriter(inputStream, schema);
+            var arrowWriter =
+                new ArrowStreamWriter(inputStream, schema, leaveOpen: false, ipcOptions);
             await arrowWriter.WriteRecordBatchAsync(
                 new RecordBatch(
                     schema,
@@ -269,7 +286,7 @@ namespace Microsoft.Spark.Worker.UnitTest
 
             inputStream.Seek(0, SeekOrigin.Begin);
 
-            CommandExecutorStat stat = new CommandExecutor().Execute(
+            CommandExecutorStat stat = new CommandExecutor(sparkVersion).Execute(
                 inputStream,
                 outputStream,
                 0,
@@ -295,15 +312,18 @@ namespace Microsoft.Spark.Worker.UnitTest
                 Assert.Equal($"udf: {i}", array.GetString(i));
             }
 
-            int end = SerDe.ReadInt32(outputStream);
-            Assert.Equal(0, end);
+            CheckEOS(outputStream, ipcOptions);
 
             // Validate all the data on the stream is read.
             Assert.Equal(outputStream.Length, outputStream.Position);
         }
 
-        [Fact]
-        public async Task TestDataFrameSqlCommandExecutorWithSingleCommand()
+        [Theory]
+        [MemberData(nameof(CommandExecutorData.Data), MemberType = typeof(CommandExecutorData))]
+
+        public async Task TestDataFrameSqlCommandExecutorWithSingleCommand(
+            Version sparkVersion,
+            IpcOptions ipcOptions)
         {
             var udfWrapper = new Sql.DataFrameUdfWrapper<ArrowStringDataFrameColumn, ArrowStringDataFrameColumn>(
                 (strings) => strings.Apply(cur => $"udf: {cur}"));
@@ -331,7 +351,8 @@ namespace Microsoft.Spark.Worker.UnitTest
             Schema schema = new Schema.Builder()
                 .Field(b => b.Name("arg1").DataType(StringType.Default))
                 .Build();
-            var arrowWriter = new ArrowStreamWriter(inputStream, schema);
+            var arrowWriter =
+                new ArrowStreamWriter(inputStream, schema, leaveOpen: false, ipcOptions);
             await arrowWriter.WriteRecordBatchAsync(
                 new RecordBatch(
                     schema,
@@ -346,7 +367,7 @@ namespace Microsoft.Spark.Worker.UnitTest
 
             inputStream.Seek(0, SeekOrigin.Begin);
 
-            CommandExecutorStat stat = new CommandExecutor().Execute(
+            CommandExecutorStat stat = new CommandExecutor(sparkVersion).Execute(
                 inputStream,
                 outputStream,
                 0,
@@ -372,15 +393,18 @@ namespace Microsoft.Spark.Worker.UnitTest
                 Assert.Equal($"udf: {i}", array.GetString(i));
             }
 
-            int end = SerDe.ReadInt32(outputStream);
-            Assert.Equal(0, end);
+            CheckEOS(outputStream, ipcOptions);
 
             // Validate all the data on the stream is read.
             Assert.Equal(outputStream.Length, outputStream.Position);
         }
 
-        [Fact]
-        public async Task TestArrowSqlCommandExecutorWithMultiCommands()
+        [Theory]
+        [MemberData(nameof(CommandExecutorData.Data), MemberType = typeof(CommandExecutorData))]
+
+        public async Task TestArrowSqlCommandExecutorWithMultiCommands(
+            Version sparkVersion,
+            IpcOptions ipcOptions)
         {
             var udfWrapper1 = new Sql.ArrowUdfWrapper<StringArray, StringArray>(
                 (strings) => (StringArray)ToArrowArray(
@@ -427,7 +451,8 @@ namespace Microsoft.Spark.Worker.UnitTest
                 .Field(b => b.Name("arg2").DataType(Int32Type.Default))
                 .Field(b => b.Name("arg3").DataType(Int32Type.Default))
                 .Build();
-            var arrowWriter = new ArrowStreamWriter(inputStream, schema);
+            var arrowWriter =
+                new ArrowStreamWriter(inputStream, schema, leaveOpen: false, ipcOptions);
             await arrowWriter.WriteRecordBatchAsync(
                 new RecordBatch(
                     schema,
@@ -444,7 +469,7 @@ namespace Microsoft.Spark.Worker.UnitTest
 
             inputStream.Seek(0, SeekOrigin.Begin);
 
-            CommandExecutorStat stat = new CommandExecutor().Execute(
+            CommandExecutorStat stat = new CommandExecutor(sparkVersion).Execute(
                 inputStream,
                 outputStream,
                 0,
@@ -471,15 +496,18 @@ namespace Microsoft.Spark.Worker.UnitTest
                 Assert.Equal(i * i, array2.Values[i]);
             }
 
-            int end = SerDe.ReadInt32(outputStream);
-            Assert.Equal(0, end);
+            CheckEOS(outputStream, ipcOptions);
 
             // Validate all the data on the stream is read.
             Assert.Equal(outputStream.Length, outputStream.Position);
         }
 
-        [Fact]
-        public async Task TestDataFrameSqlCommandExecutorWithMultiCommands()
+        [Theory]
+        [MemberData(nameof(CommandExecutorData.Data), MemberType = typeof(CommandExecutorData))]
+
+        public async Task TestDataFrameSqlCommandExecutorWithMultiCommands(
+            Version sparkVersion,
+            IpcOptions ipcOptions)
         {
             var udfWrapper1 = new Sql.DataFrameUdfWrapper<ArrowStringDataFrameColumn, ArrowStringDataFrameColumn>(
                 (strings) => strings.Apply(cur => $"udf: {cur}"));
@@ -521,7 +549,8 @@ namespace Microsoft.Spark.Worker.UnitTest
                 .Field(b => b.Name("arg2").DataType(Int32Type.Default))
                 .Field(b => b.Name("arg3").DataType(Int32Type.Default))
                 .Build();
-            var arrowWriter = new ArrowStreamWriter(inputStream, schema);
+            var arrowWriter =
+                new ArrowStreamWriter(inputStream, schema, leaveOpen: false, ipcOptions);
             await arrowWriter.WriteRecordBatchAsync(
                 new RecordBatch(
                     schema,
@@ -538,7 +567,7 @@ namespace Microsoft.Spark.Worker.UnitTest
 
             inputStream.Seek(0, SeekOrigin.Begin);
 
-            CommandExecutorStat stat = new CommandExecutor().Execute(
+            CommandExecutorStat stat = new CommandExecutor(sparkVersion).Execute(
                 inputStream,
                 outputStream,
                 0,
@@ -565,8 +594,7 @@ namespace Microsoft.Spark.Worker.UnitTest
                 Assert.Equal(i * i, array2.Values[i]);
             }
 
-            int end = SerDe.ReadInt32(outputStream);
-            Assert.Equal(0, end);
+            CheckEOS(outputStream, ipcOptions);
 
             // Validate all the data on the stream is read.
             Assert.Equal(outputStream.Length, outputStream.Position);
@@ -577,8 +605,12 @@ namespace Microsoft.Spark.Worker.UnitTest
         /// Schema, and no record batches, that CommandExecutor writes the
         /// appropriate response back.
         /// </summary>
-        [Fact]
-        public void TestArrowSqlCommandExecutorWithEmptyInput()
+        [Theory]
+        [MemberData(nameof(CommandExecutorData.Data), MemberType = typeof(CommandExecutorData))]
+
+        public void TestArrowSqlCommandExecutorWithEmptyInput(
+            Version sparkVersion,
+            IpcOptions ipcOptions)
         {
             var udfWrapper = new Sql.ArrowUdfWrapper<StringArray, StringArray>(
                 (strings) => (StringArray)ToArrowArray(
@@ -607,7 +639,8 @@ namespace Microsoft.Spark.Worker.UnitTest
             Schema schema = new Schema.Builder()
                 .Field(b => b.Name("arg1").DataType(StringType.Default))
                 .Build();
-            var arrowWriter = new ArrowStreamWriter(inputStream, schema);
+            var arrowWriter =
+                new ArrowStreamWriter(inputStream, schema, leaveOpen: false, ipcOptions);
 
             // The .NET ArrowStreamWriter doesn't currently support writing just a 
             // schema with no batches - but Java does. We use Reflection to simulate
@@ -624,7 +657,7 @@ namespace Microsoft.Spark.Worker.UnitTest
 
             inputStream.Seek(0, SeekOrigin.Begin);
 
-            CommandExecutorStat stat = new CommandExecutor().Execute(
+            CommandExecutorStat stat = new CommandExecutor(sparkVersion).Execute(
                 inputStream,
                 outputStream,
                 0,
@@ -641,7 +674,7 @@ namespace Microsoft.Spark.Worker.UnitTest
             var arrowReader = new ArrowStreamReader(outputStream);
             RecordBatch outputBatch = arrowReader.ReadNextRecordBatch();
 
-            Assert.Equal(1, outputBatch.Schema.Fields.Count);
+            Assert.Equal(1, outputBatch.Schema.FieldsList.Count);
             Assert.IsType<StringType>(outputBatch.Schema.GetFieldByIndex(0).DataType);
 
             Assert.Equal(0, outputBatch.Length);
@@ -650,8 +683,7 @@ namespace Microsoft.Spark.Worker.UnitTest
             var array = (StringArray)outputBatch.Arrays.ElementAt(0);
             Assert.Equal(0, array.Length);
 
-            int end = SerDe.ReadInt32(outputStream);
-            Assert.Equal(0, end);
+            CheckEOS(outputStream, ipcOptions);
 
             // Validate all the data on the stream is read.
             Assert.Equal(outputStream.Length, outputStream.Position);
@@ -662,11 +694,15 @@ namespace Microsoft.Spark.Worker.UnitTest
         /// Schema, and no record batches, that CommandExecutor writes the
         /// appropriate response back.
         /// </summary>
-        [Fact]
-        public void TestDataFrameSqlCommandExecutorWithEmptyInput()
+        [Theory]
+        [MemberData(nameof(CommandExecutorData.Data), MemberType = typeof(CommandExecutorData))]
+
+        public void TestDataFrameSqlCommandExecutorWithEmptyInput(
+            Version sparkVersion,
+            IpcOptions ipcOptions)
         {
             var udfWrapper = new Sql.DataFrameUdfWrapper<ArrowStringDataFrameColumn, ArrowStringDataFrameColumn>(
-                (strings) => strings.Apply(cur=> $"udf: {cur}"));
+                (strings) => strings.Apply(cur => $"udf: {cur}"));
 
             var command = new SqlCommand()
             {
@@ -689,7 +725,7 @@ namespace Microsoft.Spark.Worker.UnitTest
             Schema schema = new Schema.Builder()
                 .Field(b => b.Name("arg1").DataType(StringType.Default))
                 .Build();
-            var arrowWriter = new ArrowStreamWriter(inputStream, schema);
+            var arrowWriter = new ArrowStreamWriter(inputStream, schema, false, ipcOptions);
 
             // The .NET ArrowStreamWriter doesn't currently support writing just a 
             // schema with no batches - but Java does. We use Reflection to simulate
@@ -706,7 +742,7 @@ namespace Microsoft.Spark.Worker.UnitTest
 
             inputStream.Seek(0, SeekOrigin.Begin);
 
-            CommandExecutorStat stat = new CommandExecutor().Execute(
+            CommandExecutorStat stat = new CommandExecutor(sparkVersion).Execute(
                 inputStream,
                 outputStream,
                 0,
@@ -723,7 +759,7 @@ namespace Microsoft.Spark.Worker.UnitTest
             var arrowReader = new ArrowStreamReader(outputStream);
             RecordBatch outputBatch = arrowReader.ReadNextRecordBatch();
 
-            Assert.Equal(1, outputBatch.Schema.Fields.Count);
+            Assert.Equal(1, outputBatch.Schema.FieldsList.Count);
             Assert.IsType<StringType>(outputBatch.Schema.GetFieldByIndex(0).DataType);
 
             Assert.Equal(0, outputBatch.Length);
@@ -732,15 +768,18 @@ namespace Microsoft.Spark.Worker.UnitTest
             var array = (StringArray)outputBatch.Arrays.ElementAt(0);
             Assert.Equal(0, array.Length);
 
-            int end = SerDe.ReadInt32(outputStream);
-            Assert.Equal(0, end);
+            CheckEOS(outputStream, ipcOptions);
 
             // Validate all the data on the stream is read.
             Assert.Equal(outputStream.Length, outputStream.Position);
         }
 
-        [Fact]
-        public async Task TestArrowGroupedMapCommandExecutor()
+        [Theory]
+        [MemberData(nameof(CommandExecutorData.Data), MemberType = typeof(CommandExecutorData))]
+
+        public async Task TestArrowGroupedMapCommandExecutor(
+            Version sparkVersion,
+            IpcOptions ipcOptions)
         {
             StringArray ConvertStrings(StringArray strings)
             {
@@ -793,11 +832,12 @@ namespace Microsoft.Spark.Worker.UnitTest
             int numRows = 10;
 
             // Write test data to the input stream.
-            var schema = new Schema.Builder()
+            Schema schema = new Schema.Builder()
                 .Field(b => b.Name("arg1").DataType(StringType.Default))
                 .Field(b => b.Name("arg2").DataType(Int64Type.Default))
                 .Build();
-            var arrowWriter = new ArrowStreamWriter(inputStream, schema);
+            var arrowWriter =
+                new ArrowStreamWriter(inputStream, schema, leaveOpen: false, ipcOptions);
             await arrowWriter.WriteRecordBatchAsync(
                 new RecordBatch(
                     schema,
@@ -816,7 +856,7 @@ namespace Microsoft.Spark.Worker.UnitTest
 
             inputStream.Seek(0, SeekOrigin.Begin);
 
-            CommandExecutorStat stat = new CommandExecutor().Execute(
+            CommandExecutorStat stat = new CommandExecutor(sparkVersion).Execute(
                 inputStream,
                 outputStream,
                 0,
@@ -834,36 +874,52 @@ namespace Microsoft.Spark.Worker.UnitTest
             RecordBatch outputBatch = await arrowReader.ReadNextRecordBatchAsync();
 
             Assert.Equal(numRows, outputBatch.Length);
-            Assert.Equal(2, outputBatch.ColumnCount);
+            StringArray stringArray;
+            Int64Array longArray;
+            if (sparkVersion < new Version(Versions.V3_0_0))
+            {
+                Assert.Equal(2, outputBatch.ColumnCount);
+                stringArray = (StringArray)outputBatch.Column(0);
+                longArray = (Int64Array)outputBatch.Column(1);
+            }
+            else
+            {
+                Assert.Equal(1, outputBatch.ColumnCount);
+                var structArray = (StructArray)outputBatch.Column(0);
+                Assert.Equal(2, structArray.Fields.Count);
+                stringArray = (StringArray)structArray.Fields[0];
+                longArray = (Int64Array)structArray.Fields[1];
+            }
 
-            var stringArray = (StringArray)outputBatch.Column(0);
             for (int i = 0; i < numRows; ++i)
             {
                 Assert.Equal($"udf: {i}", stringArray.GetString(i));
             }
 
-            var longArray = (Int64Array)outputBatch.Column(1);
             for (int i = 0; i < numRows; ++i)
             {
                 Assert.Equal(100 + i, longArray.Values[i]);
             }
 
-            int end = SerDe.ReadInt32(outputStream);
-            Assert.Equal(0, end);
+            CheckEOS(outputStream, ipcOptions);
 
             // Validate all the data on the stream is read.
             Assert.Equal(outputStream.Length, outputStream.Position);
         }
 
-        [Fact]
-        public async Task TestDataFrameGroupedMapCommandExecutor()
+        [Theory]
+        [MemberData(nameof(CommandExecutorData.Data), MemberType = typeof(CommandExecutorData))]
+
+        public async Task TestDataFrameGroupedMapCommandExecutor(
+            Version sparkVersion,
+            IpcOptions ipcOptions)
         {
-            ArrowStringDataFrameColumn ConvertStrings(ArrowStringDataFrameColumn strings)
+            static ArrowStringDataFrameColumn ConvertStrings(ArrowStringDataFrameColumn strings)
             {
                 return strings.Apply(cur => $"udf: {cur}");
             }
 
-            var resultSchema = new Schema.Builder()
+            Schema resultSchema = new Schema.Builder()
                 .Field(b => b.Name("arg1").DataType(StringType.Default))
                 .Field(b => b.Name("arg2").DataType(Int64Type.Default))
                 .Build();
@@ -896,11 +952,12 @@ namespace Microsoft.Spark.Worker.UnitTest
             int numRows = 10;
 
             // Write test data to the input stream.
-            var schema = new Schema.Builder()
+            Schema schema = new Schema.Builder()
                 .Field(b => b.Name("arg1").DataType(StringType.Default))
                 .Field(b => b.Name("arg2").DataType(Int64Type.Default))
                 .Build();
-            var arrowWriter = new ArrowStreamWriter(inputStream, schema);
+            var arrowWriter =
+                new ArrowStreamWriter(inputStream, schema, leaveOpen: false, ipcOptions);
             await arrowWriter.WriteRecordBatchAsync(
                 new RecordBatch(
                     schema,
@@ -919,7 +976,7 @@ namespace Microsoft.Spark.Worker.UnitTest
 
             inputStream.Seek(0, SeekOrigin.Begin);
 
-            CommandExecutorStat stat = new CommandExecutor().Execute(
+            CommandExecutorStat stat = new CommandExecutor(sparkVersion).Execute(
                 inputStream,
                 outputStream,
                 0,
@@ -937,30 +994,44 @@ namespace Microsoft.Spark.Worker.UnitTest
             RecordBatch outputBatch = await arrowReader.ReadNextRecordBatchAsync();
 
             Assert.Equal(numRows, outputBatch.Length);
-            Assert.Equal(2, outputBatch.ColumnCount);
+            StringArray stringArray;
+            DoubleArray doubleArray;
+            if (sparkVersion < new Version(Versions.V3_0_0))
+            {
+                Assert.Equal(2, outputBatch.ColumnCount);
+                stringArray = (StringArray)outputBatch.Column(0);
+                doubleArray = (DoubleArray)outputBatch.Column(1);
+            }
+            else
+            {
+                Assert.Equal(1, outputBatch.ColumnCount);
+                var structArray = (StructArray)outputBatch.Column(0);
+                Assert.Equal(2, structArray.Fields.Count);
+                stringArray = (StringArray)structArray.Fields[0];
+                doubleArray = (DoubleArray)structArray.Fields[1];
+            }
 
-            var stringArray = (StringArray)outputBatch.Column(0);
             for (int i = 0; i < numRows; ++i)
             {
                 Assert.Equal($"udf: {i}", stringArray.GetString(i));
             }
 
-            var doubleArray = (DoubleArray)outputBatch.Column(1);
             for (int i = 0; i < numRows; ++i)
             {
                 Assert.Equal(100 + i, doubleArray.Values[i]);
             }
 
-            int end = SerDe.ReadInt32(outputStream);
-            Assert.Equal(0, end);
+            CheckEOS(outputStream, ipcOptions);
 
             // Validate all the data on the stream is read.
             Assert.Equal(outputStream.Length, outputStream.Position);
         }
 
-        [Fact]
-        public void TestRDDCommandExecutor()
+        [Theory]
+        [MemberData(nameof(CommandExecutorData.Data), MemberType = typeof(CommandExecutorData))]
+        public void TestRDDCommandExecutor(Version sparkVersion, IpcOptions ipcOptions)
         {
+            _ = ipcOptions;
             static int mapUdf(int a) => a + 3;
             var command = new RDDCommand()
             {
@@ -978,8 +1049,10 @@ namespace Microsoft.Spark.Worker.UnitTest
 
             using var inputStream = new MemoryStream();
             using var outputStream = new MemoryStream();
+#pragma warning disable SYSLIB0011 // Type or member is obsolete
             // Write test data to the input stream.
             var formatter = new BinaryFormatter();
+#pragma warning restore SYSLIB0011 // Type or member is obsolete
             var memoryStream = new MemoryStream();
 
             var inputs = new int[] { 0, 1, 2, 3, 4 };
@@ -988,7 +1061,10 @@ namespace Microsoft.Spark.Worker.UnitTest
             foreach (int input in inputs)
             {
                 memoryStream.Position = 0;
+#pragma warning disable SYSLIB0011 // Type or member is obsolete
+                // TODO: Replace BinaryFormatter with a new, secure serializer.
                 formatter.Serialize(memoryStream, input);
+#pragma warning restore SYSLIB0011 // Type or member is obsolete
                 values.Add(memoryStream.ToArray());
             }
 
@@ -1002,7 +1078,7 @@ namespace Microsoft.Spark.Worker.UnitTest
             inputStream.Seek(0, SeekOrigin.Begin);
 
             // Execute the command.
-            CommandExecutorStat stat = new CommandExecutor().Execute(
+            CommandExecutorStat stat = new CommandExecutor(sparkVersion).Execute(
                 inputStream,
                 outputStream,
                 0,
@@ -1018,13 +1094,53 @@ namespace Microsoft.Spark.Worker.UnitTest
             for (int i = 0; i < inputs.Length; ++i)
             {
                 Assert.True(SerDe.ReadInt32(outputStream) > 0);
+#pragma warning disable SYSLIB0011 // Type or member is obsolete
+                // TODO: Replace BinaryFormatter with a new, secure serializer.
                 Assert.Equal(
                     mapUdf(i),
                     formatter.Deserialize(outputStream));
+#pragma warning restore SYSLIB0011 // Type or member is obsolete
             }
 
             // Validate all the data on the stream is read.
             Assert.Equal(outputStream.Length, outputStream.Position);
         }
+
+        private void CheckEOS(Stream stream, IpcOptions ipcOptions)
+        {
+            if (!ipcOptions.WriteLegacyIpcFormat)
+            {
+                int continuationToken = SerDe.ReadInt32(stream);
+                Assert.Equal(-1, continuationToken);
+            }
+
+            int end = SerDe.ReadInt32(stream);
+            Assert.Equal(0, end);
+        }
+    }
+
+    public class CommandExecutorData
+    {
+        // CommandExecutor only changes its behavior between major versions.
+        public static IEnumerable<object[]> Data =>
+            new List<object[]>
+            {
+                new object[]
+                {
+                    new Version(Versions.V2_4_2),
+                    new IpcOptions
+                    {
+                        WriteLegacyIpcFormat = true
+                    }
+                },
+                new object[]
+                {
+                    new Version(Versions.V3_0_0),
+                    new IpcOptions
+                    {
+                        WriteLegacyIpcFormat = false
+                    }
+                }
+            };
     }
 }

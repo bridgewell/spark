@@ -27,10 +27,11 @@ namespace Microsoft.Spark.Interop.Ipc
         private static readonly byte[] s_timestampTypeId = new[] { (byte)'t' };
         private static readonly byte[] s_jvmObjectTypeId = new[] { (byte)'j' };
         private static readonly byte[] s_byteArrayTypeId = new[] { (byte)'r' };
-        private static readonly byte[] s_doubleArrayArrayTypeId = new[] { ( byte)'A' };
+        private static readonly byte[] s_doubleArrayArrayTypeId = new[] { (byte)'A' };
         private static readonly byte[] s_arrayTypeId = new[] { (byte)'l' };
         private static readonly byte[] s_dictionaryTypeId = new[] { (byte)'e' };
         private static readonly byte[] s_rowArrTypeId = new[] { (byte)'R' };
+        private static readonly byte[] s_objectArrTypeId = new[] { (byte)'O' };
 
         private static readonly byte[] s_ArrayListObjectTypeId = new[] { (byte)'o' };
 
@@ -42,6 +43,8 @@ namespace Microsoft.Spark.Interop.Ipc
         internal static void BuildPayload(
             MemoryStream destination,
             bool isStaticMethod,
+            int processId,
+            int threadId,
             object classNameOrJvmObjectReference,
             string methodName,
             object[] args)
@@ -51,6 +54,8 @@ namespace Microsoft.Spark.Interop.Ipc
             destination.Position += sizeof(int);
 
             SerDe.Write(destination, isStaticMethod);
+            SerDe.Write(destination, processId);
+            SerDe.Write(destination, threadId);
             SerDe.Write(destination, classNameOrJvmObjectReference.ToString());
             SerDe.Write(destination, methodName);
             SerDe.Write(destination, args.Length);
@@ -149,7 +154,7 @@ namespace Microsoft.Spark.Interop.Ipc
                                     SerDe.Write(destination, d);
                                 }
                                 break;
-                            
+
                             case double[][] argDoubleArrayArray:
                                 SerDe.Write(destination, s_doubleArrayArrayTypeId);
                                 SerDe.Write(destination, argDoubleArrayArray.Length);
@@ -209,6 +214,26 @@ namespace Microsoft.Spark.Interop.Ipc
                                         ConvertArgsToBytes(dest, r.Values, true);
                                     }
                                 );
+                                break;
+
+                            case IEnumerable<object> argObjectEnumerable:
+                                posBeforeEnumerable = destination.Position;
+                                destination.Position += sizeof(int);
+                                itemCount = 0;
+                                if (convertArgs == null)
+                                {
+                                    convertArgs = new object[1];
+                                }
+                                foreach (object o in argObjectEnumerable)
+                                {
+                                    ++itemCount;
+                                    convertArgs[0] = o;
+                                    ConvertArgsToBytes(destination, convertArgs, true);
+                                }
+                                posAfterEnumerable = destination.Position;
+                                destination.Position = posBeforeEnumerable;
+                                SerDe.Write(destination, itemCount);
+                                destination.Position = posAfterEnumerable;
                                 break;
 
                             case var _ when IsDictionary(arg.GetType()):
@@ -370,6 +395,11 @@ namespace Microsoft.Spark.Interop.Ipc
                     if (typeof(IEnumerable<GenericRow>).IsAssignableFrom(type))
                     {
                         return s_rowArrTypeId;
+                    }
+
+                    if (typeof(IEnumerable<object>).IsAssignableFrom(type))
+                    {
+                        return s_objectArrTypeId;
                     }
 
                     if (typeof(Date).IsAssignableFrom(type))

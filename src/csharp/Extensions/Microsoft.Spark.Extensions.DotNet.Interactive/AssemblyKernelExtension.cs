@@ -25,6 +25,7 @@ namespace Microsoft.Spark.Extensions.DotNet.Interactive
     public class AssemblyKernelExtension : IKernelExtension
     {
         private const string TempDirEnvVar = "DOTNET_SPARK_EXTENSION_INTERACTIVE_TMPDIR";
+        private const string PreserveTempDirEnvVar = "DOTNET_SPARK_EXTENSION_INTERACTIVE_PRESERVE_TMPDIR";
 
         private readonly PackageResolver _packageResolver =
             new PackageResolver(new SupportNugetWrapper());
@@ -34,16 +35,20 @@ namespace Microsoft.Spark.Extensions.DotNet.Interactive
         /// </summary>
         /// <param name="kernel">The kernel calling this method.</param>
         /// <returns><see cref="Task.CompletedTask"/> when extension is loaded.</returns>
-        public Task OnLoadAsync(IKernel kernel)
+        public Task OnLoadAsync(Kernel kernel)
         {
-            if (kernel is CompositeKernel kernelBase)
+            if (kernel is CompositeKernel compositeKernel)
             {
                 Environment.SetEnvironmentVariable(Constants.RunningREPLEnvVar, "true");
 
                 DirectoryInfo tempDir = CreateTempDirectory();
-                kernelBase.RegisterForDisposal(new DisposableDirectory(tempDir));
 
-                kernelBase.AddMiddleware(async (command, context, next) =>
+                if (!EnvironmentUtils.GetEnvironmentVariableAsBool(PreserveTempDirEnvVar))
+                {
+                    compositeKernel.RegisterForDisposal(new DisposableDirectory(tempDir));
+                }
+
+                compositeKernel.AddMiddleware(async (command, context, next) =>
                 {
                     await next(command, context);
 
@@ -103,7 +108,7 @@ namespace Microsoft.Spark.Extensions.DotNet.Interactive
 
         private bool TryGetSparkSession(out SparkSession sparkSession)
         {
-            sparkSession = SparkSession.GetDefaultSession();
+            sparkSession = SparkSession.GetActiveSession();
             return sparkSession != null;
         }
 
@@ -145,10 +150,10 @@ namespace Microsoft.Spark.Extensions.DotNet.Interactive
             }
 
             Version version = SparkEnvironment.SparkVersion;
-            return (version.Major, version.Minor, version.Build) switch
+            return version.Major switch
             {
-                (2, _, _) => false,
-                (3, 0, _) => true,
+                2 => false,
+                3 => true,
                 _ => throw new NotSupportedException($"Spark {version} not supported.")
             };
         }

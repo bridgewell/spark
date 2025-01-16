@@ -1,10 +1,10 @@
 # Getting Started with Spark .NET on MacOS
 
-These instructions will show you how to run a .NET for Apache Spark app using .NET Core on MacOSX.
+These instructions will show you how to run a .NET for Apache Spark app using .NET 8 on MacOSX.
 
 ## Pre-requisites
 
-- Download and install **[.NET Core 2.1 SDK](https://dotnet.microsoft.com/download/dotnet-core/2.1)** 
+- Download and install **[.NET 8 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/8.0)** 
 - Install **[Java 8](https://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html)** 
      - Select the appropriate version for your operating system e.g., `jdk-8u231-macosx-x64.dmg`.
      - Install using the installer and verify you are able to run `java` from your command-line
@@ -18,6 +18,11 @@ These instructions will show you how to run a .NET for Apache Spark app using .N
 - Download and install **[Microsoft.Spark.Worker](https://github.com/dotnet/spark/releases)** release:
     - Select a **[Microsoft.Spark.Worker](https://github.com/dotnet/spark/releases)** release from .NET for Apache Spark GitHub Releases page and download into your local machine (e.g., `/bin/Microsoft.Spark.Worker/`).
     - **IMPORTANT** Create a new environment variable using ```export DOTNET_WORKER_DIR <your_path>``` and set it to the directory where you downloaded and extracted the Microsoft.Spark.Worker (e.g., `/bin/Microsoft.Spark.Worker/`).
+    - Make sure the worker is marked as executable and remove any "quarantined" attributes, e.g.:
+        ```bash
+        chmod 755 /bin/Microsoft.Spark.Worker/Microsoft.Spark.Worker
+        xattr -d com.apple.quarantine /bin/Microsoft.Spark.Worker/*
+        ```
 
 
 ## Authoring a .NET for Apache Spark App
@@ -68,7 +73,7 @@ These instructions will show you how to run a .NET for Apache Spark app using .N
     spark-submit \
     --class org.apache.spark.deploy.dotnet.DotnetRunner \
     --master local \
-    microsoft-spark-2.4.x-<version>.jar \
+    microsoft-spark-<version>.jar \
     dotnet HelloSpark.dll
     ```
     **Note**: This command assumes you have downloaded Apache Spark and added it to your PATH environment variable to be able to use `spark-submit`, otherwise, you would have to use the full path (e.g., `~/spark/bin/spark-submit`).

@@ -11,6 +11,8 @@
 # See example YAML call for this script below. Note the use of the variable `$(dn-bot-dnceng-artifact-feeds-rw)`
 # from the AzureDevOps-Artifact-Feeds-Pats variable group.
 #
+# Any disabledPackageSources entries which start with "darc-int" will be re-enabled as part of this script executing
+#
 #  - task: PowerShell@2
 #    displayName: Setup Private Feeds Credentials
 #    condition: eq(variables['Agent.OS'], 'Windows_NT')
@@ -33,7 +35,7 @@ Set-StrictMode -Version 2.0
 . $PSScriptRoot\tools.ps1
 
 # Add source entry to PackageSources
-function AddPackageSource($sources, $SourceName, $SourceEndPoint, $creds, $Username, $Password) {
+function AddPackageSource($sources, $SourceName, $SourceEndPoint, $creds, $Username, $pwd) {
     $packageSource = $sources.SelectSingleNode("add[@key='$SourceName']")
     
     if ($packageSource -eq $null)
@@ -46,12 +48,11 @@ function AddPackageSource($sources, $SourceName, $SourceEndPoint, $creds, $Usern
     else {
         Write-Host "Package source $SourceName already present."
     }
-    
-    AddCredential -Creds $creds -Source $SourceName -Username $Username -Password $Password
+    AddCredential -Creds $creds -Source $SourceName -Username $Username -pwd $pwd
 }
 
 # Add a credential node for the specified source
-function AddCredential($creds, $source, $username, $password) {
+function AddCredential($creds, $source, $username, $pwd) {
     # Looks for credential configuration for the given SourceName. Create it if none is found.
     $sourceElement = $creds.SelectSingleNode($Source)
     if ($sourceElement -eq $null)
@@ -80,17 +81,27 @@ function AddCredential($creds, $source, $username, $password) {
         $passwordElement.SetAttribute("key", "ClearTextPassword")
         $sourceElement.AppendChild($passwordElement) | Out-Null
     }
-    $passwordElement.SetAttribute("value", $Password)
+    
+    $passwordElement.SetAttribute("value", $pwd)
 }
 
-function InsertMaestroPrivateFeedCredentials($Sources, $Creds, $Username, $Password) {
+function InsertMaestroPrivateFeedCredentials($Sources, $Creds, $Username, $pwd) {
     $maestroPrivateSources = $Sources.SelectNodes("add[contains(@key,'darc-int')]")
 
     Write-Host "Inserting credentials for $($maestroPrivateSources.Count) Maestro's private feeds."
     
     ForEach ($PackageSource in $maestroPrivateSources) {
         Write-Host "`tInserting credential for Maestro's feed:" $PackageSource.Key
-        AddCredential -Creds $creds -Source $PackageSource.Key -Username $Username -Password $Password
+        AddCredential -Creds $creds -Source $PackageSource.Key -Username $Username -pwd $pwd
+    }
+}
+
+function EnablePrivatePackageSources($DisabledPackageSources) {
+    $maestroPrivateSources = $DisabledPackageSources.SelectNodes("add[contains(@key,'darc-int')]")
+    ForEach ($DisabledPackageSource in $maestroPrivateSources) {
+        Write-Host "`tEnsuring private source '$($DisabledPackageSource.key)' is enabled by deleting it from disabledPackageSource"
+        # Due to https://github.com/NuGet/Home/issues/10291, we must actually remove the disabled entries
+        $DisabledPackageSources.RemoveChild($DisabledPackageSource)
     }
 }
 
@@ -123,21 +134,34 @@ if ($creds -eq $null) {
     $doc.DocumentElement.AppendChild($creds) | Out-Null
 }
 
+# Check for disabledPackageSources; we'll enable any darc-int ones we find there
+$disabledSources = $doc.DocumentElement.SelectSingleNode("disabledPackageSources")
+if ($disabledSources -ne $null) {
+    Write-Host "Checking for any darc-int disabled package sources in the disabledPackageSources node"
+    EnablePrivatePackageSources -DisabledPackageSources $disabledSources
+}
+
 $userName = "dn-bot"
 
 # Insert credential nodes for Maestro's private feeds
-InsertMaestroPrivateFeedCredentials -Sources $sources -Creds $creds -Username $userName -Password $Password
+InsertMaestroPrivateFeedCredentials -Sources $sources -Creds $creds -Username $userName -pwd $Password
 
-$dotnet3Source = $sources.SelectSingleNode("add[@key='dotnet3']")
-if ($dotnet3Source -ne $null) {
-    AddPackageSource -Sources $sources -SourceName "dotnet3-internal" -SourceEndPoint "https://pkgs.dev.azure.com/dnceng/_packaging/dotnet3-internal/nuget/v2" -Creds $creds -Username $userName -Password $Password
-    AddPackageSource -Sources $sources -SourceName "dotnet3-internal-transport" -SourceEndPoint "https://pkgs.dev.azure.com/dnceng/_packaging/dotnet3-internal-transport/nuget/v2" -Creds $creds -Username $userName -Password $Password
-}
-
+# 3.1 uses a different feed url format so it's handled differently here
 $dotnet31Source = $sources.SelectSingleNode("add[@key='dotnet3.1']")
 if ($dotnet31Source -ne $null) {
-    AddPackageSource -Sources $sources -SourceName "dotnet3.1-internal" -SourceEndPoint "https://pkgs.dev.azure.com/dnceng/_packaging/dotnet3.1-internal/nuget/v2" -Creds $creds -Username $userName -Password $Password
-    AddPackageSource -Sources $sources -SourceName "dotnet3.1-internal-transport" -SourceEndPoint "https://pkgs.dev.azure.com/dnceng/_packaging/dotnet3.1-internal-transport/nuget/v2" -Creds $creds -Username $userName -Password $Password
+    AddPackageSource -Sources $sources -SourceName "dotnet3.1-internal" -SourceEndPoint "https://pkgs.dev.azure.com/dnceng/_packaging/dotnet3.1-internal/nuget/v2" -Creds $creds -Username $userName -pwd $Password
+    AddPackageSource -Sources $sources -SourceName "dotnet3.1-internal-transport" -SourceEndPoint "https://pkgs.dev.azure.com/dnceng/_packaging/dotnet3.1-internal-transport/nuget/v2" -Creds $creds -Username $userName -pwd $Password
+}
+
+$dotnetVersions = @('5','6','7','8')
+
+foreach ($dotnetVersion in $dotnetVersions) {
+    $feedPrefix = "dotnet" + $dotnetVersion;
+    $dotnetSource = $sources.SelectSingleNode("add[@key='$feedPrefix']")
+    if ($dotnetSource -ne $null) {
+        AddPackageSource -Sources $sources -SourceName "$feedPrefix-internal" -SourceEndPoint "https://pkgs.dev.azure.com/dnceng/internal/_packaging/$feedPrefix-internal/nuget/v2" -Creds $creds -Username $userName -pwd $Password
+        AddPackageSource -Sources $sources -SourceName "$feedPrefix-internal-transport" -SourceEndPoint "https://pkgs.dev.azure.com/dnceng/internal/_packaging/$feedPrefix-internal-transport/nuget/v2" -Creds $creds -Username $userName -pwd $Password
+    }
 }
 
 $doc.Save($filename)

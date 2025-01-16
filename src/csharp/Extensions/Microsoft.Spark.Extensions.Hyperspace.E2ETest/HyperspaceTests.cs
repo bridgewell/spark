@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
+using Microsoft.Spark.E2ETest;
 using Microsoft.Spark.E2ETest.Utils;
 using Microsoft.Spark.Extensions.Hyperspace.Index;
 using Microsoft.Spark.Sql;
@@ -36,7 +37,7 @@ namespace Microsoft.Spark.Extensions.Hyperspace.E2ETest
             _sampleDataFrame = _spark.Read()
                 .Option("header", true)
                 .Option("delimiter", ";")
-                .Csv("Resources\\people.csv");
+                .Csv($"{TestEnvironment.ResourceDirectory}people.csv");
             _sampleIndexName = "sample_dataframe";
             _sampleIndexConfig = new IndexConfig(_sampleIndexName, new[] { "job" }, new[] { "name" });
             _hyperspace.CreateIndex(_sampleDataFrame, _sampleIndexConfig);
@@ -53,7 +54,7 @@ namespace Microsoft.Spark.Extensions.Hyperspace.E2ETest
         /// <summary>
         /// Test the method signatures for all Hyperspace APIs.
         /// </summary>
-        [SkipIfSparkVersionIsLessThan(Versions.V2_4_0)]
+        [SkipIfSparkVersionIsNotInRange(Versions.V2_4_0, Versions.V3_0_0)]
         public void TestSignatures()
         {
             // Indexes API.
@@ -65,6 +66,14 @@ namespace Microsoft.Spark.Extensions.Hyperspace.E2ETest
 
             // Refresh API.
             _hyperspace.RefreshIndex(_sampleIndexName);
+            _hyperspace.RefreshIndex(_sampleIndexName, "incremental");
+
+            // Optimize API.
+            _hyperspace.OptimizeIndex(_sampleIndexName);
+            _hyperspace.OptimizeIndex(_sampleIndexName, "quick");
+
+            // Index metadata API.
+            Assert.IsType<DataFrame>(_hyperspace.Index(_sampleIndexName));
 
             // Cancel API.
             Assert.Throws<Exception>(() => _hyperspace.Cancel(_sampleIndexName));
@@ -86,7 +95,7 @@ namespace Microsoft.Spark.Extensions.Hyperspace.E2ETest
         /// <summary>
         /// Test E2E functionality of index CRUD APIs.
         /// </summary>
-        [SkipIfSparkVersionIsLessThan(Versions.V2_4_0)]
+        [SkipIfSparkVersionIsNotInRange(Versions.V2_4_0, Versions.V3_0_0)]
         public void TestIndexCreateAndDelete()
         {
             // Should be one active index.
@@ -116,7 +125,7 @@ namespace Microsoft.Spark.Extensions.Hyperspace.E2ETest
         /// <summary>
         /// Test that the explain API generates the expected string.
         /// </summary>
-        [SkipIfSparkVersionIsLessThan(Versions.V2_4_0)]
+        [SkipIfSparkVersionIsNotInRange(Versions.V2_4_0, Versions.V3_0_0)]
         public void TestExplainAPI()
         {
             // Run a query that hits the index.

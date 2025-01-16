@@ -55,7 +55,7 @@ Microsoft.Spark.Worker is a backend component that lives on the individual worke
    foo@bar:~/path/to/app/bin/Release/netcoreapp2.1/ubuntu.16.04-x64/publish$ zip -r <your app>.zip .
    ```
 4. Upload the following to a distributed file system (e.g., HDFS, WASB, ADLS, S3, DBFS) that your cluster has access to:
-   * `microsoft-spark-<spark_majorversion.spark_minorversion.x>-<spark_dotnet_version>.jar` (Included as part of the [Microsoft.Spark](https://www.nuget.org/packages/Microsoft.Spark/) nuget and is colocated in your app's build output directory)
+   * `microsoft-spark-<version>.jar` (Included as part of the [Microsoft.Spark](https://www.nuget.org/packages/Microsoft.Spark/) nuget and is colocated in your app's build output directory)
    * `<your app>.zip`
    * Files (e.g., dependency files, common data accessible to every worker) or Assemblies (e.g., DLLs that contain your user-defined functions, libraries that your `app` depends on) to be placed in the working directory of each executor.
 
@@ -63,7 +63,7 @@ Microsoft.Spark.Worker is a backend component that lives on the individual worke
 ## Azure HDInsight Spark
 [Azure HDInsight Spark](https://docs.microsoft.com/en-us/azure/hdinsight/spark/apache-spark-overview) is the Microsoft implementation of Apache Spark in the cloud that allows users to launch and configure Spark clusters in Azure. You can use HDInsight Spark clusters to process your data stored in Azure (e.g., [Azure Storage](https://azure.microsoft.com/en-us/services/storage/) and [Azure Data Lake Storage](https://docs.microsoft.com/en-us/azure/storage/blobs/data-lake-storage-introduction)).
 
-> **Note:** Azure HDInsight Spark is Linux-based. Therefore, if you are interested in deploying your app to Azure HDInsight Spark, make sure your app is .NET Standard compatible and that you use [.NET Core compiler](https://dotnet.microsoft.com/download) to compile your app.
+> **Note:** Azure HDInsight Spark is Linux-based. Therefore, if you are interested in deploying your app to Azure HDInsight Spark, make sure your app is .NET Standard compatible and that you use [.NET 8 compiler](https://dotnet.microsoft.com/download) to compile your app.
 
 ### Deploy Microsoft.Spark.Worker
 *Note that this step is required only once*
@@ -90,7 +90,7 @@ The following captures the setting for a HDInsight Script Action:
    --master yarn \
    --class org.apache.spark.deploy.dotnet.DotnetRunner \
    --files <comma-separated list of assemblies that contain UDF definitions, if any> \
-   adl://<cluster name>.azuredatalakestore.net/<some dir>/microsoft-spark-<spark_majorversion.spark_minorversion.x>-<spark_dotnet_version>.jar \
+   adl://<cluster name>.azuredatalakestore.net/<some dir>/microsoft-spark-<version>.jar \
    adl://<cluster name>.azuredatalakestore.net/<some dir>/<your app>.zip <your app> <app arg 1> <app arg 2> ... <app arg n>
    ```
 
@@ -104,7 +104,7 @@ foo@bar:~$ curl -k -v -X POST "https://<your spark cluster>.azurehdinsight.net/l
 -H "X-Requested-By: <hdinsight username>" \
 -d @- << EOF
 {
-    "file":"adl://<cluster name>.azuredatalakestore.net/<some dir>/microsoft-spark-<spark_majorversion.spark_minorversion.x>-<spark_dotnet_version>.jar",
+    "file":"adl://<cluster name>.azuredatalakestore.net/<some dir>/microsoft-spark-<version>.jar",
     "className":"org.apache.spark.deploy.dotnet.DotnetRunner",
     "files":["adl://<cluster name>.azuredatalakestore.net/<some dir>/<udf assembly>", "adl://<cluster name>.azuredatalakestore.net/<some dir>/<file>"],
     "args":["adl://<cluster name>.azuredatalakestore.net/<some dir>/<your app>.zip","<your app>","<app arg 1>","<app arg 2>,"...","<app arg n>"]
@@ -115,7 +115,7 @@ EOF
 ## Amazon EMR Spark
 [Amazon EMR](https://docs.aws.amazon.com/emr/latest/ManagementGuide/emr-what-is-emr.html) is a managed cluster platform that simplifies running big data frameworks on AWS.
 
-> **Note:** AWS EMR Spark is Linux-based. Therefore, if you are interested in deploying your app to AWS EMR Spark, make sure your app is .NET Standard compatible and that you use [.NET Core compiler](https://dotnet.microsoft.com/download) to compile your app.
+> **Note:** AWS EMR Spark is Linux-based. Therefore, if you are interested in deploying your app to AWS EMR Spark, make sure your app is .NET Standard compatible and that you use [.NET 8 compiler](https://dotnet.microsoft.com/download) to compile your app.
 
 ### Deploy Microsoft.Spark.Worker
 *Note that this step is only required at cluster creation*
@@ -144,7 +144,7 @@ foo@bar:~$ aws emr create-cluster \
    --master yarn \
    --class org.apache.spark.deploy.dotnet.DotnetRunner \
    --files <comma-separated list of assemblies that contain UDF definitions, if any> \
-   s3://mybucket/<some dir>/microsoft-spark-<spark_majorversion.spark_minorversion.x>-<spark_dotnet_version>.jar \
+   s3://mybucket/<some dir>/microsoft-spark-<version>.jar \
    s3://mybucket/<some dir>/<your app>.zip <your app> <app args>
    ```
 
@@ -154,13 +154,13 @@ Amazon EMR Steps can be used to submit jobs to the Spark framework installed on 
 # For example, you can run the following on Linux using `aws` cli.
 foo@bar:~$ aws emr add-steps \
 --cluster-id j-xxxxxxxxxxxxx \
---steps Type=spark,Name="Spark Program",Args=[--master,yarn,--files,s3://mybucket/<some dir>/<udf assembly>,--class,org.apache.spark.deploy.dotnet.DotnetRunner,s3://mybucket/<some dir>/microsoft-spark-<spark_majorversion.spark_minorversion.x>-<spark_dotnet_version>.jar,s3://mybucket/<some dir>/<your app>.zip,<your app>,<app arg 1>,<app arg 2>,...,<app arg n>],ActionOnFailure=CONTINUE
+--steps Type=spark,Name="Spark Program",Args=[--master,yarn,--files,s3://mybucket/<some dir>/<udf assembly>,--class,org.apache.spark.deploy.dotnet.DotnetRunner,s3://mybucket/<some dir>/microsoft-spark-<version>.jar,s3://mybucket/<some dir>/<your app>.zip,<your app>,<app arg 1>,<app arg 2>,...,<app arg n>],ActionOnFailure=CONTINUE
 ```
 
 ## Databricks
 [Databricks](http://databricks.com) is a platform that provides cloud-based big data processing using Apache Spark.
 
-> **Note:** [Azure](https://azure.microsoft.com/en-us/services/databricks/) and [AWS](https://databricks.com/aws) Databricks is Linux-based. Therefore, if you are interested in deploying your app to Databricks, make sure your app is .NET Standard compatible and that you use [.NET Core compiler](https://dotnet.microsoft.com/download) to compile your app.
+> **Note:** [Azure](https://azure.microsoft.com/en-us/services/databricks/) and [AWS](https://databricks.com/aws) Databricks is Linux-based. Therefore, if you are interested in deploying your app to Databricks, make sure your app is .NET Standard compatible and that you use [.NET 8 compiler](https://dotnet.microsoft.com/download) to compile your app.
 
 Databricks allows you to submit Spark .NET apps to an existing active cluster or create a new cluster everytime you launch a job. This requires the **Microsoft.Spark.Worker** to be installed **first** before you submit a Spark .NET app.
 
@@ -192,7 +192,7 @@ Databricks allows you to submit Spark .NET apps to an existing active cluster or
 
 One-time Setup:
    1. Go to your Databricks cluster -> Jobs (on the left-side menu) -> Set JAR
-   2. Upload the appropriate `microsoft-spark-<spark-version>-<spark-dotnet-version>.jar`
+   2. Upload the appropriate `microsoft-spark-<version>.jar`
    3. Set the params appropriately:
       ```
       Main Class: org.apache.spark.deploy.dotnet.DotnetRunner
@@ -231,5 +231,5 @@ Publishing your App & Running:
    1. [Create a Job](https://docs.databricks.com/user-guide/jobs.html) and select *Configure spark-submit*.
    2. Configure `spark-submit` with the following parameters:
       ```shell
-      ["--files","/dbfs/<path-to>/<app assembly/file to deploy to worker>","--class","org.apache.spark.deploy.dotnet.DotnetRunner","/dbfs/<path-to>/microsoft-spark-<spark_majorversion.spark_minorversion.x>-<spark_dotnet_version>.jar","/dbfs/<path-to>/<app name>.zip","<app name>","app arg1","app arg2"]
+      ["--files","/dbfs/<path-to>/<app assembly/file to deploy to worker>","--class","org.apache.spark.deploy.dotnet.DotnetRunner","/dbfs/<path-to>/microsoft-spark-<version>.jar","/dbfs/<path-to>/<app name>.zip","<app name>","app arg1","app arg2"]
       ```

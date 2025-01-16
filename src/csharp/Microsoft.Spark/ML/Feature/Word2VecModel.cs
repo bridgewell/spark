@@ -8,19 +8,19 @@ using Microsoft.Spark.Sql;
 
 namespace Microsoft.Spark.ML.Feature
 {
-    public class Word2VecModel : IJvmObjectReferenceProvider
+    public class Word2VecModel :
+        JavaModel<Word2VecModel>,
+        IJavaMLWritable,
+        IJavaMLReadable<Word2VecModel>
     {
-        private static readonly string s_word2VecModelClassName = 
+        private static readonly string s_className =
             "org.apache.spark.ml.feature.Word2VecModel";
-        
-        private readonly JvmObjectReference _jvmObject;
 
         /// <summary>
         /// Create a <see cref="Word2VecModel"/> without any parameters
         /// </summary>
-        public Word2VecModel()
+        public Word2VecModel() : base(s_className)
         {
-            _jvmObject = SparkEnvironment.JvmBridge.CallConstructor(s_word2VecModelClassName);
         }
 
         /// <summary>
@@ -28,25 +28,21 @@ namespace Microsoft.Spark.ML.Feature
         /// <see cref="Word2VecModel"/> a unique ID
         /// </summary>
         /// <param name="uid">An immutable unique ID for the object and its derivatives.</param>
-        public Word2VecModel(string uid)
+        public Word2VecModel(string uid) : base(s_className, uid)
         {
-            _jvmObject = SparkEnvironment.JvmBridge.CallConstructor(s_word2VecModelClassName, uid);
         }
-        
-        internal Word2VecModel(JvmObjectReference jvmObject)
+
+        internal Word2VecModel(JvmObjectReference jvmObject) : base(jvmObject)
         {
-            _jvmObject = jvmObject;
         }
-        
-        JvmObjectReference IJvmObjectReferenceProvider.Reference => _jvmObject;
 
         /// <summary>
         /// Transform a sentence column to a vector column to represent the whole sentence.
         /// </summary>
         /// <param name="documentDF"><see cref="DataFrame"/> to transform</param>
-        public DataFrame Transform(DataFrame documentDF) => 
-            new DataFrame((JvmObjectReference)_jvmObject.Invoke("transform", documentDF));
-        
+        public override DataFrame Transform(DataFrame documentDF) =>
+            new DataFrame((JvmObjectReference)Reference.Invoke("transform", documentDF));
+
         /// <summary>
         /// Find <paramref name="num"/> number of words whose vector representation most similar to
         /// the supplied vector. If the supplied vector is the vector representation of a word in
@@ -57,11 +53,10 @@ namespace Microsoft.Spark.ML.Feature
         /// vector representation.</param>
         /// <param name="num">The number of words to find that are similar to "word"</param>
         public DataFrame FindSynonyms(string word, int num) =>
-            new DataFrame((JvmObjectReference)_jvmObject.Invoke("findSynonyms", word, num));
-        
+            new DataFrame((JvmObjectReference)Reference.Invoke("findSynonyms", word, num));
+
         /// <summary>
-        /// Loads the <see cref="Word2VecModel"/> that was previously saved using
-        /// <see cref="Save(string)"/>.
+        /// Loads the <see cref="Word2VecModel"/> that was previously saved using Save(string).
         /// </summary>
         /// <param name="path">
         /// The path the previous <see cref="Word2VecModel"/> was saved to
@@ -69,26 +64,30 @@ namespace Microsoft.Spark.ML.Feature
         /// <returns>New <see cref="Word2VecModel"/> object, loaded from path.</returns>
         public static Word2VecModel Load(string path) => WrapAsWord2VecModel(
             SparkEnvironment.JvmBridge.CallStaticJavaMethod(
-                s_word2VecModelClassName, "load", path));
-        
-        /// <summary>
-        /// Saves the <see cref="Word2VecModel"/> so that it can be loaded later using
-        /// <see cref="Load(string)"/>.
-        /// </summary>
-        /// <param name="path">The path to save the <see cref="Word2VecModel"/> to.</param>
-        /// <returns>New <see cref="Word2VecModel"/> object.</returns>
-        public Word2VecModel Save(string path) => 
-            WrapAsWord2VecModel(_jvmObject.Invoke("save", path));
-        
-        /// <summary>
-        /// The UID that was used to create the <see cref="Word2Vec"/>. If no UID is passed in
-        /// when creating the <see cref="Word2Vec"/> then a random UID is created when the
-        /// <see cref="Word2Vec"/> is created.
-        /// </summary>
-        /// <returns>string UID identifying the <see cref="Word2Vec"/>.</returns>
-        public string Uid() => (string)_jvmObject.Invoke("uid");
+                s_className, "load", path));
 
-        private static Word2VecModel WrapAsWord2VecModel(object obj) => 
+        /// <summary>
+        /// Saves the object so that it can be loaded later using Load. Note that these objects
+        /// can be shared with Scala by Loading or Saving in Scala.
+        /// </summary>
+        /// <param name="path">The path to save the object to</param>
+        public void Save(string path) => Reference.Invoke("save", path);
+
+        /// <summary>
+        /// Get the corresponding JavaMLWriter instance.
+        /// </summary>
+        /// <returns>a <see cref="JavaMLWriter"/> instance for this ML instance.</returns>
+        public JavaMLWriter Write() =>
+            new JavaMLWriter((JvmObjectReference)Reference.Invoke("write"));
+
+        /// <summary>
+        /// Get the corresponding JavaMLReader instance.
+        /// </summary>
+        /// <returns>an <see cref="JavaMLReader&lt;Word2VecModel&gt;"/> instance for this ML instance.</returns>
+        public JavaMLReader<Word2VecModel> Read() =>
+            new JavaMLReader<Word2VecModel>((JvmObjectReference)Reference.Invoke("read"));
+
+        private static Word2VecModel WrapAsWord2VecModel(object obj) =>
             new Word2VecModel((JvmObjectReference)obj);
     }
 }

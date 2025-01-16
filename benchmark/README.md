@@ -42,8 +42,8 @@ TPCH timing results is written to stdout in the following form: `TPCH_Result,<la
 
 ## CSharp
 1. Ensure that the Microsoft.Spark.Worker is properly [installed](../deployment/README.md#cloud-deployment) in your cluster.
-2. Build `microsoft-spark-<spark_majorversion.spark_minorversion.x>-<spark_dotnet_version>.jar` and the [CSharp Tpch benchmark](csharp/Tpch) application by following the [build instructions](../README.md#building-from-source).
-3. Upload [run_csharp_benchmark.sh](run_csharp_benchmark.sh), the Tpch benchmark application, and `microsoft-spark-<spark_majorversion.spark_minorversion.x>-<spark_dotnet_version>.jar` to the cluster.
+2. Build `microsoft-spark-<version>.jar` and the [CSharp Tpch benchmark](csharp/Tpch) application by following the [build instructions](../README.md#building-from-source).
+3. Upload [run_csharp_benchmark.sh](run_csharp_benchmark.sh), the Tpch benchmark application, and `microsoft-spark-<version>.jar` to the cluster.
 4. Run the benchmark by invoking:
     ```shell
     run_csharp_benchmark.sh \
@@ -53,15 +53,14 @@ TPCH timing results is written to stdout in the following form: `TPCH_Result,<la
     <executor_memory> \
     <executor_cores> \
     </path/to/Tpch.dll> \
-    </path/to/microsoft-spark-<spark_majorversion.spark_minorversion.x>-<spark_dotnet_version>.jar> \
+    </path/to/microsoft-spark-<version>.jar> \
     </path/to/Tpch executable> \
     </path/to/dataset> \
     <number of iterations> \
     <true for sql tests, false for functional tests>
     ```
 
-    **Note**: Ensure that you build the worker and application with .NET Core 3.0 in order to run hardware acceleration queries.
-
+    **Note**: Ensure that you build the worker and application with .NET 8 in order to run hardware acceleration queries.
 
 ## Python
 1. Upload [run_python_benchmark.sh](run_python_benchmark.sh) and all [python tpch benchmark](python/) files to the cluster.

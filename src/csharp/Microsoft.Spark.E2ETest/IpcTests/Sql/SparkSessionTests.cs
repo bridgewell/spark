@@ -2,10 +2,8 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.Spark.E2ETest.Utils;
 using Microsoft.Spark.Sql;
 using Microsoft.Spark.Sql.Catalog;
 using Microsoft.Spark.Sql.Streaming;
@@ -25,22 +23,28 @@ namespace Microsoft.Spark.E2ETest.IpcTests
         }
 
         /// <summary>
-        /// Test signatures for APIs up to Spark 2.3.*.
+        /// Test signatures for APIs up to Spark 2.4.*.
         /// The purpose of this test is to ensure that JVM calls can be successfully made.
         /// Note that this is not testing functionality of each function.
         /// </summary>
         [Fact]
-        public void TestSignaturesV2_3_X()
+        public void TestSignaturesV2_4_X()
         {
             Assert.IsType<SparkContext>(_spark.SparkContext);
 
             Assert.IsType<Builder>(SparkSession.Builder());
+
+            SparkSession.ClearActiveSession();
+            SparkSession.SetActiveSession(_spark);
+            Assert.IsType<SparkSession>(SparkSession.GetActiveSession());
 
             SparkSession.ClearDefaultSession();
             SparkSession.SetDefaultSession(_spark);
             Assert.IsType<SparkSession>(SparkSession.GetDefaultSession());
 
             Assert.IsType<RuntimeConfig>(_spark.Conf());
+
+            Assert.IsType<StreamingQueryManager>(_spark.Streams());
 
             Assert.IsType<SparkSession>(_spark.NewSession());
 
@@ -59,14 +63,9 @@ namespace Microsoft.Spark.E2ETest.IpcTests
             Assert.IsType<UdfRegistration>(_spark.Udf());
 
             Assert.IsType<Catalog>(_spark.Catalog);
-        }
 
-        /// <summary>
-        /// Test signatures for APIs introduced in Spark 2.4.*.
-        /// </summary>
-        [SkipIfSparkVersionIsLessThan(Versions.V2_4_0)]
-        public void TestSignaturesV2_4_X()
-        {
+            Assert.NotNull(_spark.Version());
+        
             Assert.IsType<SparkSession>(SparkSession.Active());
         }
 
@@ -75,12 +74,14 @@ namespace Microsoft.Spark.E2ETest.IpcTests
         /// </summary>
         [Fact]
         public void TestCreateDataFrame()
-        {            
+        {
             // Calling CreateDataFrame with schema
             {
-                var data = new List<GenericRow>();
-                data.Add(new GenericRow(new object[] { "Alice", 20, new Date(2020, 1, 1) }));
-                data.Add(new GenericRow(new object[] { "Bob", 30, new Date(2020, 1, 2) }));
+                var data = new List<GenericRow>
+                {
+                    new GenericRow(new object[] { "Alice", 20, new Date(2020, 1, 1) }),
+                    new GenericRow(new object[] { "Bob", 30, new Date(2020, 1, 2) })
+                };
 
                 var schema = new StructType(new List<StructField>()
                 {
