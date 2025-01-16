@@ -133,7 +133,7 @@ namespace Microsoft.Spark.UnitTest
             socket.Setup(m => m.OutputStream).Returns(stream);            
 
             var rowCollector = new RowCollector();
-            Row[] rows = rowCollector.Collect(socket.Object, true).ToArray();
+            Row[] rows = rowCollector.Collect(socket.Object).ToArray();
 
             Assert.Equal(2, rows.Length);
             Assert.Equal(

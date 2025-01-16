@@ -411,7 +411,7 @@ namespace Microsoft.Spark.Sql
         /// </summary>
         public void Stop()
         {
-            _jvmObject.Invoke("stop");
+            Reference.Invoke("stop");
 
             // if we have created the jvm bridge process, dispose it now.
             if (s_jvmbridge != null)

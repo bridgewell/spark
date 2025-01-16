@@ -145,8 +145,7 @@ namespace Microsoft.Spark.Sql
                 return jarpath;
             }
 
-            var workdir = Environment.GetEnvironmentVariable(
-                    ConfigurationService.WorkerDirEnvVarName);
+            var workdir = Environment.GetEnvironmentVariable(ConfigurationService.DefaultWorkerDirEnvVarName);
             if ((workdir != null) && Directory.Exists(workdir))
             {
                 // let's find the approicate jar in the work dirctory.

@@ -73,6 +73,8 @@ namespace Microsoft.Spark.Interop.Ipc
             object[] args,
             bool addTypeIdPrefix = true)
         {
+            long posBeforeEnumerable, posAfterEnumerable;
+            int itemCount;
             object[] convertArgs = null;
 
             foreach (object arg in args)

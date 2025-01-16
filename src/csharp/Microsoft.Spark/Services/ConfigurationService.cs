@@ -20,7 +20,7 @@ namespace Microsoft.Spark.Services
         public const string WorkerWriteBufferSizeEnvVarName =
             "spark.dotnet.worker.writeBufferSize";
 
-        internal const string DefaultWorkerDirEnvVarName = "DOTNET_WORKER_DIR";
+        public const string DefaultWorkerDirEnvVarName = "DOTNET_WORKER_DIR";
         internal const string WorkerVerDirEnvVarNameFormat = "DOTNET_WORKER_{0}_DIR";
 
         private const string DotnetBackendPortEnvVarName = "DOTNETBACKEND_PORT";
