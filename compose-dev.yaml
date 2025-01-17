@@ -1,0 +1,6 @@
+version: "3.7"
+services:
+  dev:
+    image: harbor.local.bridgewell.com/docker.io/ubuntu:20.04
+    entrypoint: /bin/bash -c "echo 'Hello World'; tail -f /dev/null"
+
