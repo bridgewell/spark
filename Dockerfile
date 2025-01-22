@@ -5,13 +5,16 @@ RUN apt-get update \
         maven \
         git \
         wget \
-    && wget https://dot.net/v1/dotnet-install.sh -O /tmp/dotnet-install.sh \
-    && chmod +x /tmp/dotnet-install.sh \
-    && /tmp/dotnet-install.sh -i /usr/local/bin \
-    && wget https://archive.apache.org/dist/spark/spark-2.3.2/spark-2.3.2-bin-hadoop2.7.tgz -O /tmp/spark-2.3.2-bin-hadoop2.7.tgz \
-    && tar -xvzf /tmp/spark-2.3.2-bin-hadoop2.7.tgz -C /usr/local/ \
-    && rm -rf /tmp/spark-2.3.2-bin-hadoop2.7.tgz \
+        lsb-core \
+    && wget https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb -O /tmp/packages-microsoft-prod.deb \
+    && dpkg -i /tmp/packages-microsoft-prod.deb \
+    && rm /tmp/packages-microsoft-prod.deb \
+    && apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y dotnet-sdk-8.0 \
+    && wget https://archive.apache.org/dist/spark/spark-3.3.2/spark-3.3.2-bin-hadoop2.tgz -O /tmp//spark-3.3.2-bin-hadoop2.tgz \
+    && tar -xvzf /tmp//spark-3.3.2-bin-hadoop2.tgz -C /usr/local/bin \
+    && rm -rf /tmp//spark-3.3.2-bin-hadoop2.tgz \
     && rm -rf /tmp/dotnet-install.sh
-    && ln -s /usr/local/bin/spark /usr/local/bin/spark-2.3.2-bin-hadoop2.7
+    && ln -s /usr/local/bin/spark-3.3.2-bin-hadoop2 /usr/local/bin/spark
 
 ENV SPARK_HOME /usr/local/bin/spark
