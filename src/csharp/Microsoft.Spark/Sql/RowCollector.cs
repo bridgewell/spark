@@ -21,7 +21,7 @@ namespace Microsoft.Spark.Sql
         /// Collects pickled row objects from the given socket.
         /// </summary>
         /// <param name="socket">Socket the get the stream from.</param>
-        /// <returns>Collection of row objects</returns>
+        /// <returns>Collection of row objects.</returns>
         public IEnumerable<Row> Collect(ISocketWrapper socket)
         {
             Stream inputStream = socket.InputStream;
