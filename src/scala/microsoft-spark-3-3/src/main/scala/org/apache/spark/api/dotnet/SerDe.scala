@@ -147,6 +147,11 @@ class SerDe(val tracker: JVMObjectTracker) {
     (0 until len).map(_ => readObject(in))
   }
 
+  private def readListObjArray(in: DataInputStream): Array[Object] = {
+    val len = readInt(in)
+    (0 until len).map(_ => readObject(in)).toArray
+  }
+
   private def readList(dis: DataInputStream): Array[_] = {
     val arrType = readObjectType(dis)
     arrType match {
@@ -158,7 +163,7 @@ class SerDe(val tracker: JVMObjectTracker) {
       case 'b' => readBooleanArr(dis)
       case 'j' => readStringArr(dis).map(x => tracker.getObject(x))
       case 'r' => readBytesArr(dis)
-      case 'o' => readObjectArr(dis)
+      case 'o' => readListObjArray(dis)
       case _ => throw new IllegalArgumentException(s"Invalid array type $arrType")
     }
   }
