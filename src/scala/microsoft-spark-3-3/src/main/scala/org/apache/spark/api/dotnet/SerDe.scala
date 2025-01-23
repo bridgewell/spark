@@ -44,6 +44,7 @@ class SerDe(val tracker: JVMObjectTracker) {
       case 't' => readTime(dis)
       case 'j' => tracker.getObject(readString(dis))
       case 'R' => readRowArr(dis)
+      case 's' => readRow(dis)
       case 'O' => readObjectArr(dis)
       case _ => throw new IllegalArgumentException(s"Invalid type $dataType")
     }
@@ -157,6 +158,7 @@ class SerDe(val tracker: JVMObjectTracker) {
       case 'b' => readBooleanArr(dis)
       case 'j' => readStringArr(dis).map(x => tracker.getObject(x))
       case 'r' => readBytesArr(dis)
+      case 'o' => readObjectArr(dis)
       case _ => throw new IllegalArgumentException(s"Invalid array type $arrType")
     }
   }
