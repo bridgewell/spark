@@ -379,6 +379,16 @@ namespace Microsoft.Spark.Interop.Ipc
                         return s_byteArrayTypeId;
                     }
 
+                    if (type == typeof(int[]) ||
+                        type == typeof(long[]) ||
+                        type == typeof(double[]) ||
+                        type == typeof(double[][]) ||
+                        typeof(IEnumerable<byte[]>).IsAssignableFrom(type) ||
+                        typeof(IEnumerable<string>).IsAssignableFrom(type))
+                    {
+                        return s_arrayTypeId;
+                    }
+
                     if (IsDictionary(type))
                     {
                         return s_dictionaryTypeId;
