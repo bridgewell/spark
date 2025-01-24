@@ -1,5 +1,4 @@
-ARG PLATFORM=linux/amd64
-FROM --platform=$PLATFORM harbor.local.bridgewell.com/docker.io/ubuntu:22.04
+FROM ubuntu:22.04
 
 RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y openjdk-8-jdk \
