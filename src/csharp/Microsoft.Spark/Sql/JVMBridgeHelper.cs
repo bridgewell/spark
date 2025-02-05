@@ -41,12 +41,12 @@ namespace Microsoft.Spark.Sql
         private static int maxWaitTimeoutMS = 60000;
 
         private readonly ILoggerService _logger =
-            LoggerServiceFactory.GetLogger(typeof(JVMBridgeHelper));        
+            LoggerServiceFactory.GetLogger(typeof(JVMBridgeHelper));
 
         /// <summary>
         /// The running jvm bridge process , null means no such process
         /// </summary>
-        private Process jvmBridge;
+        private Process jvmBridgeJavaProcess;
 
         /// <summary>
         /// Detect if we already have the runner by checking backend port is using or not.
@@ -73,7 +73,8 @@ namespace Microsoft.Spark.Sql
                 // Cannot find correct launch informations, give up.
                 return;
             }
-            var arguments = $"--class {RunnerClassname} {jarpath} debug";
+            var backendport = SparkEnvironment.ConfigurationService.GetBackendPortNumber();
+            var arguments = $"--class {RunnerClassname} {jarpath} debug {backendport}";
             var startupinfo = new ProcessStartInfo
             {
                 FileName = sparksubmit,
@@ -84,13 +85,13 @@ namespace Microsoft.Spark.Sql
                 CreateNoWindow = true,
             };
 
-            jvmBridge = new Process() { StartInfo = startupinfo };
+            jvmBridgeJavaProcess = new Process() { StartInfo = startupinfo };
             _logger.LogInfo($"Launch JVM Bridge : {sparksubmit} {arguments}");
-            jvmBridge.Start();
+            jvmBridgeJavaProcess.Start();
 
             // wait until we see .net backend started
             Task<string> message;
-            while ((message = jvmBridge.StandardOutput.ReadLineAsync()) != null)
+            while ((message = jvmBridgeJavaProcess.StandardOutput.ReadLineAsync()) != null)
             {
                 if (message.Wait(maxWaitTimeoutMS) == false)
                 {
@@ -101,21 +102,21 @@ namespace Microsoft.Spark.Sql
                 if (message.Result.Contains(RunnerReadyMsg))
                 {
                     // launched successfully!
-                    jvmBridge.StandardOutput.ReadToEndAsync();
+                    jvmBridgeJavaProcess.StandardOutput.ReadToEndAsync();
                     _logger.LogInfo($"Launch JVM Bridge ready");
                     return;
                 }
                 if (message.Result.Contains(RunnerAddressInUseMsg))
                 {
                     // failed to start for port is using, give up.
-                    jvmBridge.StandardOutput.ReadToEndAsync();
+                    jvmBridgeJavaProcess.StandardOutput.ReadToEndAsync();
                     break;
                 }
             }
             // wait timeout , or failed to startup
             // give up.
-            jvmBridge.Close();
-            jvmBridge = null;
+            jvmBridgeJavaProcess.Dispose();
+            jvmBridgeJavaProcess = null;
         }
 
         private string locateSparkSubmit()
@@ -163,11 +164,14 @@ namespace Microsoft.Spark.Sql
 
         public void Dispose()
         {
-            if (jvmBridge != null)
+            if (jvmBridgeJavaProcess != null)
             {
-                jvmBridge.StandardInput.WriteLine("\n");
-                jvmBridge.WaitForExit(maxWaitTimeoutMS);
-                _logger.LogInfo($"JVM Bridge disposed.");
+                jvmBridgeJavaProcess.StandardInput.WriteLine("\n");
+                jvmBridgeJavaProcess.WaitForExit(maxWaitTimeoutMS);
+                jvmBridgeJavaProcess.Dispose();
+                jvmBridgeJavaProcess = null;
+                SparkEnvironment.DisposeJvmBridge();
+                _logger.LogInfo($"JVMBridgeHelper disposed.");
             }
         }
     }

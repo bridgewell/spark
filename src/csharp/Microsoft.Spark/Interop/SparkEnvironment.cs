@@ -79,6 +79,16 @@ namespace Microsoft.Spark.Interop
             }
         }
 
+        public static void DisposeJvmBridge()
+        {
+            if (s_jvmBridge != null)
+            {
+                s_jvmBridge.Dispose();
+                s_jvmBridge = null;
+                s_logger.LogInfo("SparkEnviornment s_jvmBridge disposed.");
+            }
+        }
+
         private static IConfigurationService s_configurationService;
         internal static IConfigurationService ConfigurationService
         {
