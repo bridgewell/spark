@@ -172,5 +172,7 @@ namespace Microsoft.Spark.Interop.Ipc
             JvmObjectReference jvmObject,
             string methodName,
             params object[] args);
+
+        bool IsDisposed();
     }
 }

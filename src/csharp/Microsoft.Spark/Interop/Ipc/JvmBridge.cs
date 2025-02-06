@@ -46,6 +46,8 @@ namespace Microsoft.Spark.Interop.Ipc
         private readonly JvmThreadPoolGC _jvmThreadPoolGC;
         private readonly bool _isRunningRepl;
 
+        private bool _disposed = false;
+
         internal JvmBridge(int portNumber)
         {
             if (portNumber == 0)
@@ -518,9 +520,12 @@ namespace Microsoft.Spark.Interop.Ipc
             return returnValue;
         }
 
+        public bool IsDisposed() => _disposed;
+
         public void Dispose()
         {
             _jvmThreadPoolGC.Dispose();
+            _disposed = true;
             while (_sockets.TryDequeue(out ISocketWrapper socket))
             {
                 if (socket != null)

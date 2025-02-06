@@ -81,6 +81,11 @@ namespace Microsoft.Spark.Interop.Ipc
             Debug.Assert(Id != null);
             Debug.Assert(Jvm != null);
 
+            if (Jvm.IsDisposed())
+            {
+                return;
+            }
+
             // This function is registered in the finalizer. If the JVM side is launched
             // in a debug mode, it is possible that the JVM process already exited
             // when this function runs, resulting in an Exception thrown. In this case,
