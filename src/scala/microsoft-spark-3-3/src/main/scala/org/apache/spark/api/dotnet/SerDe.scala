@@ -251,7 +251,7 @@ class SerDe(val tracker: JVMObjectTracker) {
           writeString(dos, value.asInstanceOf[String])
         case "float" | "java.lang.Float" =>
           writeType(dos, "float")
-          writeDouble(dos, value.asInstanceOf[Float])
+          writeFloat(dos, value.asInstanceOf[Float])
         case "double" | "java.lang.Double" =>
           writeType(dos, "double")
           writeDouble(dos, value.asInstanceOf[Double])
