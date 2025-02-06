@@ -166,12 +166,13 @@ namespace Microsoft.Spark.Sql
         {
             if (jvmBridgeJavaProcess != null)
             {
+                // before dispose jvm
+                SparkEnvironment.DisposeJvmBridge();
+                _logger.LogInfo($"JVMBridgeHelper disposed.");
                 jvmBridgeJavaProcess.StandardInput.WriteLine("\n");
                 jvmBridgeJavaProcess.WaitForExit(maxWaitTimeoutMS);
                 jvmBridgeJavaProcess.Dispose();
                 jvmBridgeJavaProcess = null;
-                SparkEnvironment.DisposeJvmBridge();
-                _logger.LogInfo($"JVMBridgeHelper disposed.");
             }
         }
     }
