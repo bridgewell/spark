@@ -36,6 +36,7 @@ class SerDe(val tracker: JVMObjectTracker) {
       case 'g' => new java.lang.Long(readLong(dis))
       case 'd' => new java.lang.Double(readDouble(dis))
       case 'b' => new java.lang.Boolean(readBoolean(dis))
+      case 'f' => new java.lang.Float(readFloat(dis))
       case 'c' => readString(dis)
       case 'e' => readMap(dis)
       case 'r' => readBytes(dis)
@@ -67,6 +68,10 @@ class SerDe(val tracker: JVMObjectTracker) {
 
   private def readDouble(in: DataInputStream): Double = {
     in.readDouble()
+  }
+
+  private def readFloat(in: DataInputStream): Float = {
+    in.readFloat()
   }
 
   private def readStringBytes(in: DataInputStream, len: Int): String = {
@@ -122,9 +127,19 @@ class SerDe(val tracker: JVMObjectTracker) {
     (0 until len).map(_ => readDouble(in)).toArray
   }
 
+  private def readFloatArr(in: DataInputStream): Array[Float] = {
+    val len = readInt(in)
+    (0 until len).map(_ => readFloat(in)).toArray
+  }
+
   private def readDoubleArrArr(in: DataInputStream): Array[Array[Double]] = {
     val len = readInt(in)
     (0 until len).map(_ => readDoubleArr(in)).toArray
+  }
+
+  private def readFloatArrArr(in: DataInputStream): Array[Array[Float]] = {
+    val len = readInt(in)
+    (0 until len).map(_ => readFloatArr(in)).toArray
   }
 
   private def readBooleanArr(in: DataInputStream): Array[Boolean] = {
@@ -159,7 +174,9 @@ class SerDe(val tracker: JVMObjectTracker) {
       case 'g' => readLongArr(dis)
       case 'c' => readStringArr(dis)
       case 'd' => readDoubleArr(dis)
+      case 'f' => readFloatArr(dis)
       case 'A' => readDoubleArrArr(dis)
+      case 'F' => readFloatArrArr(dis)
       case 'b' => readBooleanArr(dis)
       case 'j' => readStringArr(dis).map(x => tracker.getObject(x))
       case 'r' => readBytesArr(dis)
@@ -210,6 +227,7 @@ class SerDe(val tracker: JVMObjectTracker) {
       case "void" => dos.writeByte('n')
       case "character" => dos.writeByte('c')
       case "double" => dos.writeByte('d')
+      case "float" => dos.writeByte('f')
       case "doublearray" => dos.writeByte('A')
       case "long" => dos.writeByte('g')
       case "integer" => dos.writeByte('i')
@@ -232,8 +250,8 @@ class SerDe(val tracker: JVMObjectTracker) {
           writeType(dos, "character")
           writeString(dos, value.asInstanceOf[String])
         case "float" | "java.lang.Float" =>
-          writeType(dos, "double")
-          writeDouble(dos, value.asInstanceOf[Float].toDouble)
+          writeType(dos, "float")
+          writeDouble(dos, value.asInstanceOf[Float])
         case "double" | "java.lang.Double" =>
           writeType(dos, "double")
           writeDouble(dos, value.asInstanceOf[Double])
@@ -259,7 +277,7 @@ class SerDe(val tracker: JVMObjectTracker) {
           writeType(dos, "raw")
           writeBytes(dos, value.asInstanceOf[Array[Byte]])
         // TODO: Types not handled right now include
-        // byte, char, short, float
+        // byte, char, short
 
         // Handle arrays
         case "[Ljava.lang.String;" =>
@@ -274,6 +292,9 @@ class SerDe(val tracker: JVMObjectTracker) {
         case "[D" =>
           writeType(dos, "list")
           writeDoubleArr(dos, value.asInstanceOf[Array[Double]])
+        case "[F" =>
+          writeType(dos, "list")
+          writeFloatArr(dos, value.asInstanceOf[Array[Float]])
         case "[[D" =>
           writeType(dos, "list")
           writeDoubleArrArr(dos, value.asInstanceOf[Array[Array[Double]]])
@@ -309,6 +330,10 @@ class SerDe(val tracker: JVMObjectTracker) {
 
   private def writeDouble(out: DataOutputStream, value: Double): Unit = {
     out.writeDouble(value)
+  }
+
+  private def writeFloat(out: DataOutputStream, value: Float): Unit = {
+    out.writeFloat(value)
   }
 
   private def writeBoolean(out: DataOutputStream, value: Boolean): Unit = {
@@ -360,6 +385,12 @@ class SerDe(val tracker: JVMObjectTracker) {
     writeType(out, "double")
     out.writeInt(value.length)
     value.foreach(v => out.writeDouble(v))
+  }
+
+  private def writeFloatArr(out: DataOutputStream, value: Array[Float]): Unit = {
+    writeType(out, "float")
+    out.writeInt(value.length)
+    value.foreach(v => out.writeFloat(v))
   }
 
   private def writeDoubleArrArr(out: DataOutputStream, value: Array[Array[Double]]): Unit = {

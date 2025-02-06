@@ -23,11 +23,13 @@ namespace Microsoft.Spark.Interop.Ipc
         private static readonly byte[] s_stringTypeId = new[] { (byte)'c' };
         private static readonly byte[] s_boolTypeId = new[] { (byte)'b' };
         private static readonly byte[] s_doubleTypeId = new[] { (byte)'d' };
+        private static readonly byte[] s_signleTypeId = new[] { (byte)'f' };
         private static readonly byte[] s_dateTypeId = new[] { (byte)'D' };
         private static readonly byte[] s_timestampTypeId = new[] { (byte)'t' };
         private static readonly byte[] s_jvmObjectTypeId = new[] { (byte)'j' };
         private static readonly byte[] s_byteArrayTypeId = new[] { (byte)'r' };
         private static readonly byte[] s_doubleArrayArrayTypeId = new[] { (byte)'A' };
+        private static readonly byte[] s_singleArrayArrayTypeId = new[] { (byte)'F' };
         private static readonly byte[] s_arrayTypeId = new[] { (byte)'l' };
         private static readonly byte[] s_dictionaryTypeId = new[] { (byte)'e' };
         private static readonly byte[] s_rowArrTypeId = new[] { (byte)'R' };
@@ -105,7 +107,7 @@ namespace Microsoft.Spark.Interop.Ipc
                     case TypeCode.UInt64:
                         SerDe.Write(destination, Convert.ToInt64(arg));
                         break;
-                        
+
                     case TypeCode.Int64:
                         SerDe.Write(destination, (long)arg);
                         break;
@@ -157,6 +159,28 @@ namespace Microsoft.Spark.Interop.Ipc
                                 }
                                 break;
 
+                            case float[] argFloatArray:
+                                SerDe.Write(destination, s_signleTypeId);
+                                SerDe.Write(destination, argFloatArray.Length);
+                                foreach (float f in argFloatArray)
+                                {
+                                    SerDe.Write(destination, f);
+                                }
+                                break;
+
+                            case float[][] argFloatArrayArray:
+                                SerDe.Write(destination, s_singleArrayArrayTypeId);
+                                SerDe.Write(destination, argFloatArrayArray.Length);
+                                foreach (float[] floatArray in argFloatArrayArray)
+                                {
+                                    SerDe.Write(destination, floatArray.Length);
+                                    foreach (float f in floatArray)
+                                    {
+                                        SerDe.Write(destination, f);
+                                    }
+                                }
+                                break;
+
                             case double[][] argDoubleArrayArray:
                                 SerDe.Write(destination, s_doubleArrayArrayTypeId);
                                 SerDe.Write(destination, argDoubleArrayArray.Length);
@@ -180,7 +204,7 @@ namespace Microsoft.Spark.Interop.Ipc
                                         SerDe.Write(dest, b.Length);
                                         dest.Write(b, 0, b.Length);
                                     }
-                                );                            
+                                );
                                 break;
 
                             case IEnumerable<string> argStringEnumerable:
@@ -299,7 +323,7 @@ namespace Microsoft.Spark.Interop.Ipc
                                 WriteIEnumerableObjects(
                                     destination,
                                     enumlist,
-                                    (dest , obj) => ConvertArgsToBytes(dest, new object[] { obj })
+                                    (dest, obj) => ConvertArgsToBytes(dest, new object[] { obj })
                                 );
                                 break;
 
@@ -327,7 +351,8 @@ namespace Microsoft.Spark.Interop.Ipc
             var posBeforeEnumerable = stream.Position;
             stream.Position += sizeof(int);
             var itemCount = 0;
-            foreach (var obj in enumlist) {
+            foreach (var obj in enumlist)
+            {
                 itemCount++;
                 writefunc(stream, obj);
             }
@@ -342,7 +367,8 @@ namespace Microsoft.Spark.Interop.Ipc
             var posBeforeEnumerable = stream.Position;
             stream.Position += sizeof(int);
             var itemCount = 0;
-            foreach (var obj in enumlist) {
+            foreach (var obj in enumlist)
+            {
                 itemCount++;
                 writefunc(stream, obj);
             }
@@ -368,6 +394,8 @@ namespace Microsoft.Spark.Interop.Ipc
                     return s_boolTypeId;
                 case TypeCode.Double:
                     return s_doubleTypeId;
+                case TypeCode.Single:
+                    return s_signleTypeId;
                 case TypeCode.Object:
                     if (typeof(IJvmObjectReferenceProvider).IsAssignableFrom(type))
                     {
@@ -383,6 +411,8 @@ namespace Microsoft.Spark.Interop.Ipc
                         type == typeof(long[]) ||
                         type == typeof(double[]) ||
                         type == typeof(double[][]) ||
+                        type == typeof(float[]) ||
+                        type == typeof(float[][]) ||
                         typeof(IEnumerable<byte[]>).IsAssignableFrom(type) ||
                         typeof(IEnumerable<string>).IsAssignableFrom(type))
                     {

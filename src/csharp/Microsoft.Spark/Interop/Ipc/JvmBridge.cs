@@ -270,6 +270,9 @@ namespace Microsoft.Spark.Interop.Ipc
                     case 'd':
                         returnValue = SerDe.ReadDouble(inputStream);
                         break;
+                    case 'f':
+                        returnValue = SerDe.ReadFloat(inputStream);
+                        break;
                     case 'b':
                         returnValue = Convert.ToBoolean(inputStream.ReadByte());
                         break;
@@ -455,6 +458,14 @@ namespace Microsoft.Spark.Interop.Ipc
                     }
                     returnValue = doubleArray;
                     break;
+                case 'f':
+                    var floatArray = new float[numOfItemsInList];
+                    for (int itemIndex = 0; itemIndex < numOfItemsInList; ++itemIndex)
+                    {
+                        floatArray[itemIndex] = SerDe.ReadFloat(s);
+                    }
+                    returnValue = floatArray;
+                    break;
                 case 'A':
                     var doubleArrayArray = new double[numOfItemsInList][];
                     for (int itemIndex = 0; itemIndex < numOfItemsInList; ++itemIndex)
@@ -462,6 +473,14 @@ namespace Microsoft.Spark.Interop.Ipc
                         doubleArrayArray[itemIndex] = ReadCollection(s) as double[];
                     }
                     returnValue = doubleArrayArray;
+                    break;
+                case 'F':
+                    var floatArrayArray = new float[numOfItemsInList][];
+                    for (int itemIndex = 0; itemIndex < numOfItemsInList; ++itemIndex)
+                    {
+                        floatArrayArray[itemIndex] = ReadCollection(s) as float[];
+                    }
+                    returnValue = floatArrayArray;
                     break;
                 case 'b':
                     var boolArray = new bool[numOfItemsInList];

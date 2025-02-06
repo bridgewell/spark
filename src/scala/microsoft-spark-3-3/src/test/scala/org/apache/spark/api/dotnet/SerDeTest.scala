@@ -77,6 +77,16 @@ class SerDeTest {
   }
 
   @Test
+  def shouldReadFloat(): Unit = {
+    val input = givenInput(in => {
+      in.writeByte('f')
+      in.writeFloat(42.41f)
+    })
+
+    assertEquals(42.41f, serDe.readObject(input))
+  }
+
+  @Test
   def shouldReadBoolean(): Unit = {
     val input = givenInput(in => {
       in.writeByte('b')
@@ -299,13 +309,16 @@ class SerDeTest {
   def shouldWritePrimitiveTypes(): Unit = {
     val in = whenOutput(out => {
       serDe.writeObject(out, 42.24f.asInstanceOf[Object])
+      serDe.writeObject(out, 42.2424d.asInstanceOf[Object])
       serDe.writeObject(out, 42L.asInstanceOf[Object])
       serDe.writeObject(out, 42.asInstanceOf[Object])
       serDe.writeObject(out, true.asInstanceOf[Object])
     })
 
-    assertEquals(in.readByte(), 'd')
+    assertEquals(in.readByte(), 'f')
     assertEquals(in.readDouble(), 42.24F, 0.000001)
+    assertEquals(in.readByte(), 'd')
+    assertEquals(in.readDouble(), 42.2424, 0.000001)
     assertEquals(in.readByte(), 'g')
     assertEquals(in.readLong(), 42L)
     assertEquals(in.readByte(), 'i')

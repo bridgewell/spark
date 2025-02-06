@@ -31,6 +31,8 @@ namespace Microsoft.Spark.Sql
         /// <returns>The created jvm bridge process helper.</returns>
         private static JVMBridgeHelper s_jvmbridge = null;
 
+        private static object s_jvmhelperlock = new object();
+
         /// <summary>
         /// Constructor for SparkSession.
         /// </summary>
@@ -67,10 +69,14 @@ namespace Microsoft.Spark.Sql
         {
             // We could try to detect if we don't have jvm bridge,
             // call the helper to launch jvm bridge process.
-            if ((s_jvmbridge == null) && 
-                (JVMBridgeHelper.IsDotnetBackendPortUsing() == false))
+            // need lock for thread safe.
+            lock (s_jvmhelperlock)
             {
-                s_jvmbridge = new JVMBridgeHelper();
+                if ((s_jvmbridge == null) &&
+                    (JVMBridgeHelper.IsDotnetBackendPortUsing() == false))
+                {
+                    s_jvmbridge = new JVMBridgeHelper();
+                }
             }
             return new Builder();
         }
@@ -201,7 +207,7 @@ namespace Microsoft.Spark.Sql
         /// A string that represents the version of Spark on which this application is running.
         /// </returns>
         public string Version() => (string)Reference.Invoke("version");
-        
+
         /// <summary>
         /// Returns the specified table/view as a DataFrame.
         /// </summary>

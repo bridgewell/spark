@@ -59,6 +59,8 @@ namespace Microsoft.Spark.Interop
         }
 
         private static IJvmBridge s_jvmBridge;
+
+        private static object s_jvmBridgeLock = new object();
         /// <summary>
         /// The bridge between the JVM and the CLR.
         /// </summary>
@@ -70,8 +72,11 @@ namespace Microsoft.Spark.Interop
         {
             get
             {
-                return s_jvmBridge ??=
-                    JvmBridgeFactory.Create(ConfigurationService.GetBackendPortNumber());
+                lock (s_jvmBridgeLock)
+                {
+                    return s_jvmBridge ??=
+                        JvmBridgeFactory.Create(ConfigurationService.GetBackendPortNumber());
+                }
             }
             set
             {

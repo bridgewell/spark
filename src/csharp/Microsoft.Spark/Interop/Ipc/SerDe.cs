@@ -101,6 +101,13 @@ namespace Microsoft.Spark.Interop.Ipc
             return BitConverter.Int64BitsToDouble(BinaryPrimitives.ReadInt64BigEndian(buffer));
         }
 
+        public static float ReadFloat(Stream s)
+        {
+            byte[] buffer = GetThreadLocalBuffer(sizeof(float));
+            TryReadBytes(s, buffer, sizeof(float));
+            return BitConverter.ToSingle(buffer, 0);
+        }
+
         /// <summary>
         /// Reads a string from a stream
         /// </summary>
