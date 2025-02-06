@@ -316,7 +316,7 @@ class SerDeTest {
     })
 
     assertEquals(in.readByte(), 'f')
-    assertEquals(in.readDouble(), 42.24F, 0.000001)
+    assertEquals(in.readFloat(), 42.24F, 0.000001)
     assertEquals(in.readByte(), 'd')
     assertEquals(in.readDouble(), 42.2424, 0.000001)
     assertEquals(in.readByte(), 'g')

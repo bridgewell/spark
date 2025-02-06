@@ -245,7 +245,7 @@ class DotnetBackendHandler(server: DotnetBackend, objectsTracker: JVMObjectTrack
           case java.lang.Long.TYPE => classOf[java.lang.Long]
           case java.lang.Double.TYPE => classOf[java.lang.Double]
           case java.lang.Boolean.TYPE => classOf[java.lang.Boolean]
-          case java.lang.Single.TYPE => classOf[java.lang.Float]
+          case java.lang.Float.TYPE => classOf[java.lang.Float]
           case _ => parameterType
         }
       }
@@ -304,7 +304,7 @@ class DotnetBackendHandler(server: DotnetBackend, objectsTracker: JVMObjectTrack
                 case java.lang.Long.TYPE => classOf[java.lang.Long]
                 case java.lang.Double.TYPE => classOf[java.lang.Double]
                 case java.lang.Boolean.TYPE => classOf[java.lang.Boolean]
-                case java.lang.Single.TYPE => classOf[java.lang.Float]
+                case java.lang.Float.TYPE => classOf[java.lang.Float]
                 case _ => parameterType
               }
             }
