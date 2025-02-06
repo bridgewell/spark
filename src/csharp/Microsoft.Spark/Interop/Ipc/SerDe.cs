@@ -105,7 +105,7 @@ namespace Microsoft.Spark.Interop.Ipc
         {
             byte[] buffer = GetThreadLocalBuffer(sizeof(float));
             TryReadBytes(s, buffer, sizeof(float));
-            return BitConverter.ToSingle(buffer, 0);
+            return buffer.BigEndianBytesToFloat();
         }
 
         /// <summary>
@@ -330,7 +330,7 @@ namespace Microsoft.Spark.Interop.Ipc
             Write(s, BitConverter.DoubleToInt64Bits(value));
 
         public static void Write(Stream s, float value) =>
-            Write(s, BitConverter.GetBytes(value));
+            Write(s, value.ToBigEndianBytes());
 
         /// <summary>
         /// Writes a string to a stream.
@@ -344,6 +344,37 @@ namespace Microsoft.Spark.Interop.Ipc
             int len = Encoding.UTF8.GetBytes(value, 0, value.Length, buffer, sizeof(int));
             BinaryPrimitives.WriteInt32BigEndian(buffer, len);
             Write(s, buffer, sizeof(int) + len);
+        }
+    }
+
+    public static class FloatEndianConverter
+    {
+        public static byte[] ToBigEndianBytes(this float value)
+        {
+            byte[] bytes = BitConverter.GetBytes(value);
+            if (BitConverter.IsLittleEndian)
+            {
+                Array.Reverse(bytes);
+            }
+            return bytes;
+        }
+
+        public static float BigEndianBytesToFloat(this byte[] bytes)
+        {
+            if (bytes == null || bytes.Length != sizeof(float))
+                throw new ArgumentException("Byte array must be exactly 4 bytes long.", nameof(bytes));
+
+            if (BitConverter.IsLittleEndian)
+            {
+                // Work on a copy so as not to modify the original array
+                byte[] temp = (byte[])bytes.Clone();
+                Array.Reverse(temp);
+                return BitConverter.ToSingle(temp, 0);
+            }
+            else
+            {
+                return BitConverter.ToSingle(bytes, 0);
+            }
         }
     }
 }
