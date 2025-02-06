@@ -70,6 +70,38 @@ namespace Microsoft.Spark.Interop.Ipc
             destination.Position = afterPosition;
         }
 
+        internal static object ConvertListOfPrimitiveTypesToArray(object obj)
+        {
+            if (obj is IEnumerable<int> intList)
+            {
+                return intList.ToArray();
+            }
+            else if (obj is IEnumerable<long> longList)
+            {
+                return longList.ToArray();
+            }
+            else if (obj is IEnumerable<double> doubleList)
+            {
+                return doubleList.ToArray();
+            }
+            else if (obj is IEnumerable<float> floatList)
+            {
+                return floatList.ToArray();
+            }
+            else if (obj is IEnumerable<string> stringList)
+            {
+                return stringList.ToArray();
+            }
+            else if (obj is IEnumerable<bool> boolList)
+            {
+                return boolList.ToArray();
+            }
+            else
+            {
+                return obj;
+            }
+        }
+
         internal static void ConvertArgsToBytes(
             MemoryStream destination,
             object[] args,
@@ -79,13 +111,15 @@ namespace Microsoft.Spark.Interop.Ipc
             int itemCount;
             object[] convertArgs = null;
 
-            foreach (object arg in args)
+            foreach (object orgarg in args)
             {
-                if (arg == null)
+                if (orgarg == null)
                 {
                     destination.WriteByte((byte)'n');
                     continue;
                 }
+
+                var arg = ConvertListOfPrimitiveTypesToArray(orgarg);
 
                 Type argType = arg.GetType();
 
