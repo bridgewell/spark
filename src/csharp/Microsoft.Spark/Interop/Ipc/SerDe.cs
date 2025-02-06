@@ -329,6 +329,9 @@ namespace Microsoft.Spark.Interop.Ipc
         public static void Write(Stream s, double value) =>
             Write(s, BitConverter.DoubleToInt64Bits(value));
 
+        public static void Write(Stream s, float value) =>
+            Write(s, BitConverter.GetBytes(value));
+
         /// <summary>
         /// Writes a string to a stream.
         /// </summary>

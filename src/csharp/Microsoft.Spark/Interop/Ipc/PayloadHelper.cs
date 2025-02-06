@@ -158,6 +158,10 @@ namespace Microsoft.Spark.Interop.Ipc
                         SerDe.Write(destination, (double)arg);
                         break;
 
+                    case TypeCode.Single:
+                        SerDe.Write(destination, (float)arg);
+                        break;
+
                     case TypeCode.Object:
                         switch (arg)
                         {
